@@ -1,5 +1,10 @@
 'use client';
 import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 const plans = [
   {
@@ -41,12 +46,30 @@ const plans = [
 ];
 
 export default function Pricing() {
+  const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const handlePayment = (plan: string) => {
     if (plan === 'Free') {
-      window.location.href = '/signup';
+      if (user) {
+        router.push('/chat');
+      } else {
+        router.push('/signup');
+      }
       return;
     }
-    alert('🛠️ Payment system coming soon! Sign up for free plan to start using Pixeloid.');
+    if (!user) {
+      router.push('/signup');
+      return;
+    }
+    alert('🛠️ Payment system coming soon!');
   };
 
   return (
@@ -57,7 +80,6 @@ export default function Pricing() {
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* Coming Soon Banner */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -229,7 +251,7 @@ export default function Pricing() {
                     opacity: plan.name === 'Free' ? 1 : 0.7,
                   }}
                 >
-                  {plan.name === 'Free' ? 'Get Started Free' : 'Coming Soon'}
+                  {plan.name === 'Free' ? (user ? 'Start Chatting' : 'Get Started Free') : 'Coming Soon'}
                 </motion.button>
               </div>
             </motion.div>

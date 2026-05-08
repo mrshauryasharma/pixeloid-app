@@ -1,7 +1,11 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { User } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 function ParticleBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,17 +36,10 @@ function ParticleBackground() {
       });
     }
 
-    const lines: Array<{ from: number; to: number }> = [];
-    for (let i = 0; i < particles.length; i++) {
-      for (let j = i + 1; j < particles.length; j++) {
-        lines.push({ from: i, to: j });
-      }
-    }
-
     function animate() {
       ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
       
-      particles.forEach((p, i) => {
+      particles.forEach((p) => {
         p.x += p.speedX;
         p.y += p.speedY;
         if (p.x < 0 || p.x > canvas!.width) p.speedX *= -1;
@@ -53,22 +50,6 @@ function ParticleBackground() {
         ctx!.fillStyle = p.color;
         ctx!.globalAlpha = p.opacity;
         ctx!.fill();
-        
-        lines.forEach(line => {
-          if (line.from === i || line.to === i) {
-            const other = line.from === i ? particles[line.to] : particles[line.from];
-            const dist = Math.hypot(p.x - other.x, p.y - other.y);
-            if (dist < 120) {
-              ctx!.beginPath();
-              ctx!.moveTo(p.x, p.y);
-              ctx!.lineTo(other.x, other.y);
-              ctx!.strokeStyle = p.color;
-              ctx!.globalAlpha = 0.06;
-              ctx!.lineWidth = 0.5;
-              ctx!.stroke();
-            }
-          }
-        });
       });
       
       ctx!.globalAlpha = 1;
@@ -101,6 +82,34 @@ function ParticleBackground() {
 }
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleGetStarted = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (user) {
+      router.push('/chat');
+    } else {
+      router.push('/signup');
+    }
+  };
+
+  const handleFreePlan = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (user) {
+      router.push('/chat');
+    } else {
+      router.push('/signup');
+    }
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -178,34 +187,42 @@ export default function Home() {
                 flexWrap: 'wrap',
               }}
             >
-              <Link href="/signup" style={{
-                background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                color: 'white',
-                padding: 'clamp(14px, 2vw, 18px) clamp(28px, 5vw, 48px)',
-                borderRadius: '50px',
-                textDecoration: 'none',
-                fontSize: 'clamp(15px, 2vw, 20px)',
-                fontWeight: '700',
-                boxShadow: '0 8px 32px rgba(102,126,234,0.4)',
-                transition: 'all 0.3s',
-                border: '2px solid rgba(255,255,255,0.2)',
-              }}>
-                🚀 Get Started Free
-              </Link>
-              <Link href="/pricing" style={{
-                background: 'rgba(255,255,255,0.1)',
-                backdropFilter: 'blur(10px)',
-                color: 'white',
-                padding: 'clamp(14px, 2vw, 18px) clamp(28px, 5vw, 48px)',
-                borderRadius: '50px',
-                textDecoration: 'none',
-                fontSize: 'clamp(15px, 2vw, 20px)',
-                fontWeight: '600',
-                border: '2px solid rgba(255,255,255,0.3)',
-                transition: 'all 0.3s',
-              }}>
-                💎 View Plans
-              </Link>
+              <a
+                href={user ? '/chat' : '/signup'}
+                onClick={handleGetStarted}
+                style={{
+                  background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                  color: 'white',
+                  padding: 'clamp(14px, 2vw, 18px) clamp(28px, 5vw, 48px)',
+                  borderRadius: '50px',
+                  textDecoration: 'none',
+                  fontSize: 'clamp(15px, 2vw, 20px)',
+                  fontWeight: '700',
+                  boxShadow: '0 8px 32px rgba(102,126,234,0.4)',
+                  transition: 'all 0.3s',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                }}
+              >
+                {user ? '🤖 Start Chatting' : '🚀 Get Started Free'}
+              </a>
+              <a
+                href={user ? '/chat' : '/pricing'}
+                onClick={handleFreePlan}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(10px)',
+                  color: 'white',
+                  padding: 'clamp(14px, 2vw, 18px) clamp(28px, 5vw, 48px)',
+                  borderRadius: '50px',
+                  textDecoration: 'none',
+                  fontSize: 'clamp(15px, 2vw, 20px)',
+                  fontWeight: '600',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  transition: 'all 0.3s',
+                }}
+              >
+                {user ? '💬 Go to Chat' : '💎 View Plans'}
+              </a>
             </motion.div>
           </motion.div>
 
