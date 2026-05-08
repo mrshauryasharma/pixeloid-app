@@ -27,6 +27,7 @@ export async function POST(request: Request) {
         credits: 20,
         dailyReset: today,
         totalChats: 0,
+        createdAt: new Date(),
       });
       return NextResponse.json({ credits: 20, plan: 'free', totalChats: 0 });
     }
@@ -45,9 +46,9 @@ export async function POST(request: Request) {
       credits: data.plan === 'yearly' ? 999 : (data.credits || 0),
       plan: data.plan || 'free',
       totalChats: data.totalChats || 0,
+      email: data.email || 'N/A',
     });
   } catch (error) {
-    console.error('Credits API Error:', error);
     return NextResponse.json({ credits: 20, plan: 'free', totalChats: 0 });
   }
 }

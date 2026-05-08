@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Check credits & update
-async function checkAndUpdateCredits(userId: string): Promise<{ allowed: boolean; remaining: number; plan: string }> {
+async function checkCredits(userId: string, email: string): Promise<{ allowed: boolean; remaining: number; plan: string; isAdmin: boolean }> {
   if (!getApps().length) {
     initializeApp({
       credential: cert({
@@ -15,75 +14,76 @@ async function checkAndUpdateCredits(userId: string): Promise<{ allowed: boolean
   }
 
   const db = getFirestore();
+
+  // Check if admin
+  const adminDoc = await db.collection('admins').doc(email).get();
+  if (adminDoc.exists) {
+    return { allowed: true, remaining: 999999, plan: 'admin', isAdmin: true };
+  }
+
   const userRef = db.collection('users').doc(userId);
   const userDoc = await userRef.get();
+  const today = new Date().toDateString();
 
   if (!userDoc.exists) {
-    // New user - give free tier
     await userRef.set({
+      email: email,
       plan: 'free',
-      credits: 20,
-      dailyReset: new Date().toDateString(),
+      credits: 19,
+      dailyReset: today,
       totalChats: 0,
+      createdAt: new Date(),
     });
-    return { allowed: true, remaining: 19, plan: 'free' };
+    return { allowed: true, remaining: 19, plan: 'free', isAdmin: false };
   }
 
   const data = userDoc.data()!;
-  const today = new Date().toDateString();
 
-  // Reset daily credits if new day for free users
-  if (data.plan === 'free' && data.dailyReset !== today) {
-    await userRef.update({
-      credits: 20,
-      dailyReset: today,
-    });
-    return { allowed: true, remaining: 20, plan: 'free' };
+  // Update email if missing
+  if (!data.email) {
+    await userRef.update({ email: email });
   }
 
-  // Check unlimited plans
   if (data.plan === 'yearly') {
-    return { allowed: true, remaining: 999, plan: 'yearly' };
+    return { allowed: true, remaining: 999, plan: 'yearly', isAdmin: false };
+  }
+
+  if (data.plan === 'free' && data.dailyReset !== today) {
+    await userRef.update({ credits: 20, dailyReset: today });
+    return { allowed: true, remaining: 20, plan: 'free', isAdmin: false };
   }
 
   if (data.credits <= 0) {
-    return { allowed: false, remaining: 0, plan: data.plan };
+    return { allowed: false, remaining: 0, plan: data.plan, isAdmin: false };
   }
 
-  // Deduct credit
   await userRef.update({
     credits: data.credits - 1,
     totalChats: (data.totalChats || 0) + 1,
   });
 
-  return { allowed: true, remaining: data.credits - 1, plan: data.plan };
+  return { allowed: true, remaining: data.credits - 1, plan: data.plan, isAdmin: false };
 }
 
 export async function POST(request: Request) {
   try {
-    const { message, userId } = await request.json();
+    const { message, userId, email } = await request.json();
 
-    // Check if user is logged in
     if (!userId) {
-      return NextResponse.json({ 
-        reply: "Please login to use AI chat!", 
-        error: 'auth_required' 
-      });
+      return NextResponse.json({ reply: "Please login to use AI chat!", error: 'auth_required' });
     }
 
-    // Check credits
-    const creditCheck = await checkAndUpdateCredits(userId);
-    
+    const creditCheck = await checkCredits(userId, email || '');
+
     if (!creditCheck.allowed) {
       return NextResponse.json({
-        reply: `Your ${creditCheck.plan} plan daily limit is over! Upgrade to continue chatting.`,
+        reply: `⚠️ Your daily limit is over!\n\n💎 Upgrade:\n• Weekly ₹15 — 100 chats\n• Monthly ₹60 — 200 chats\n• Yearly ₹499 — Unlimited`,
         error: 'limit_reached',
         remaining: 0,
         plan: creditCheck.plan,
       });
     }
 
-    // AI API Call
     const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -94,26 +94,24 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [
-          {
-            role: 'system',
-            content: 'You are Pixeloid AI. Be helpful and friendly. Respond in user\'s language.'
-          },
+          { role: 'system', content: 'You are Pixeloid AI. Be helpful and friendly. Keep responses short.' },
           { role: 'user', content: message }
         ],
-        max_tokens: 200,
+        max_tokens: 300,
         temperature: 0.7,
       }),
     });
 
     const data = await response.json();
-    const reply = data.choices[0].message.content;
+    const reply = data.choices?.[0]?.message?.content || 'Sorry, I could not process that.';
 
     return NextResponse.json({
       reply,
       remaining: creditCheck.remaining,
       plan: creditCheck.plan,
+      isAdmin: creditCheck.isAdmin,
     });
   } catch (error) {
-    return NextResponse.json({ reply: "AI service error. Try again!" });
+    return NextResponse.json({ reply: "AI service error. Try again later!" });
   }
 }

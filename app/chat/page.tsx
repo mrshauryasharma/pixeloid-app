@@ -149,16 +149,24 @@ export default function Chat() {
   const sendMessage = async () => {
     if (!input.trim()) return;
     if (!user) { alert('Please login to chat!'); return; }
+
     const userMsg: Message = { role: 'user', content: input.trim(), timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+
     try {
       const res = await fetch('/api/chat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input.trim(), userId: user.uid }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: input.trim(), 
+          userId: user.uid,
+          email: user.email,
+        }),
       });
       const data = await res.json();
+      
       if (data.error === 'limit_reached') {
         const reply = `⚠️ ${data.reply}\n\n💎 Upgrade: Weekly ₹15 | Monthly ₹60 | Yearly ₹499`;
         setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
