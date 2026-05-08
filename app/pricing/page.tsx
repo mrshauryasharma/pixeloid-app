@@ -46,16 +46,42 @@ export default function Pricing() {
       window.location.href = '/signup';
       return;
     }
-    alert(`${plan} plan selected! Payment gateway integration coming soon.`);
+    alert('🛠️ Payment system coming soon! Sign up for free plan to start using Pixeloid.');
   };
 
   return (
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)',
-      padding: 'clamp(30px, 5vw, 60px) clamp(12px, 3vw, 20px)',
+      padding: 'clamp(20px, 5vw, 60px) clamp(12px, 3vw, 20px)',
     }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* Coming Soon Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            background: 'linear-gradient(135deg, rgba(245,87,108,0.2), rgba(240,147,251,0.2))',
+            border: '1px solid rgba(245,87,108,0.3)',
+            borderRadius: '16px',
+            padding: '12px 24px',
+            textAlign: 'center',
+            marginBottom: 'clamp(20px, 3vw, 40px)',
+            maxWidth: '500px',
+            margin: '0 auto clamp(20px, 3vw, 40px)',
+          }}
+        >
+          <p style={{
+            color: '#f093fb',
+            margin: 0,
+            fontSize: 'clamp(12px, 1.8vw, 14px)',
+            fontWeight: '600',
+          }}>
+            🛠️ Payment system coming soon! All upgrades will be available shortly.
+          </p>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -76,9 +102,8 @@ export default function Pricing() {
             color: 'rgba(255,255,255,0.6)',
             fontSize: 'clamp(14px, 2.5vw, 20px)',
             fontWeight: '300',
-            padding: '0 12px',
           }}>
-            Upgrade to unlock the full power of Pixeloid AI
+            Purchase options will be available soon. Start with Free!
           </p>
         </motion.div>
 
@@ -94,10 +119,7 @@ export default function Pricing() {
               initial={{ opacity: 0, y: 60 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.15, type: "spring", stiffness: 100 }}
-              whileHover={{ 
-                y: -10,
-                boxShadow: '0 20px 60px rgba(102,126,234,0.3)',
-              }}
+              whileHover={{ y: -8 }}
               style={{
                 background: 'rgba(255,255,255,0.03)',
                 backdropFilter: 'blur(30px)',
@@ -108,9 +130,6 @@ export default function Pricing() {
                 overflow: 'hidden',
                 transition: 'all 0.4s',
                 position: 'relative',
-                boxShadow: plan.popular 
-                  ? '0 12px 40px rgba(102,126,234,0.2)' 
-                  : '0 8px 24px rgba(0,0,0,0.2)',
               }}
             >
               {plan.popular && (
@@ -124,7 +143,6 @@ export default function Pricing() {
                   borderRadius: '20px',
                   fontSize: 'clamp(10px, 1.5vw, 12px)',
                   fontWeight: '700',
-                  letterSpacing: '1px',
                   zIndex: 1,
                 }}>
                   🔥 POPULAR
@@ -151,7 +169,6 @@ export default function Pricing() {
                   color: 'rgba(255,255,255,0.8)',
                   fontSize: 'clamp(11px, 1.8vw, 14px)',
                   marginBottom: '10px',
-                  fontWeight: '500',
                 }}>
                   {plan.chats}
                 </div>
@@ -175,11 +192,7 @@ export default function Pricing() {
               </div>
 
               <div style={{ padding: 'clamp(16px, 2vw, 28px)' }}>
-                <ul style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: '0 0 clamp(16px, 2vw, 28px) 0',
-                }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 clamp(16px, 2vw, 28px) 0' }}>
                   {plan.features.map((feature, i) => (
                     <li key={i} style={{
                       color: 'rgba(255,255,255,0.8)',
@@ -190,7 +203,7 @@ export default function Pricing() {
                       alignItems: 'center',
                       gap: '8px',
                     }}>
-                      <span style={{ color: '#4facfe', fontSize: 'clamp(14px, 2vw, 18px)', flexShrink: 0 }}>✓</span>
+                      <span style={{ color: '#4facfe', fontSize: 'clamp(14px, 2vw, 18px)' }}>✓</span>
                       {feature}
                     </li>
                   ))}
@@ -207,18 +220,16 @@ export default function Pricing() {
                     border: plan.popular ? 'none' : '1px solid rgba(255,255,255,0.2)',
                     background: plan.popular 
                       ? 'linear-gradient(135deg, #667eea, #764ba2)' 
-                      : 'rgba(255,255,255,0.05)',
+                      : plan.name === 'Free' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)',
                     color: 'white',
                     fontSize: 'clamp(14px, 2vw, 16px)',
                     fontWeight: '700',
                     cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    boxShadow: plan.popular 
-                      ? '0 4px 16px rgba(102,126,234,0.4)' 
-                      : 'none',
+                    boxShadow: plan.popular ? '0 4px 16px rgba(102,126,234,0.4)' : 'none',
+                    opacity: plan.name === 'Free' ? 1 : 0.7,
                   }}
                 >
-                  {plan.name === 'Free' ? 'Get Started Free' : 'Upgrade Now'}
+                  {plan.name === 'Free' ? 'Get Started Free' : 'Coming Soon'}
                 </motion.button>
               </div>
             </motion.div>

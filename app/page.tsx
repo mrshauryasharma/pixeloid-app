@@ -1,74 +1,102 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Float } from '@react-three/drei';
-import { Suspense } from 'react';
+import { useEffect, useRef } from 'react';
 
-function Cube3D() {
-  return (
-    <Float speed={1.5} rotationIntensity={1} floatIntensity={2}>
-      <mesh>
-        <boxGeometry args={[3, 3, 3]} />
-        <meshStandardMaterial 
-          color="#667eea" 
-          metalness={0.3}
-          roughness={0.2}
-          emissive="#764ba2"
-          emissiveIntensity={0.5}
-        />
-      </mesh>
-    </Float>
-  );
-}
+function ParticleBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-function Sphere3D() {
-  return (
-    <Float speed={2} rotationIntensity={0.5} floatIntensity={1.5}>
-      <mesh position={[5, 2, -3]}>
-        <sphereGeometry args={[1.5, 32, 32]} />
-        <meshStandardMaterial 
-          color="#f093fb" 
-          metalness={0.5}
-          roughness={0.1}
-          wireframe
-        />
-      </mesh>
-    </Float>
-  );
-}
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-function Torus3D() {
-  return (
-    <Float speed={1.2} rotationIntensity={1.5} floatIntensity={2}>
-      <mesh position={[-4, -1, -2]}>
-        <torusGeometry args={[1.5, 0.4, 16, 32]} />
-        <meshStandardMaterial 
-          color="#f5576c" 
-          metalness={0.6}
-          roughness={0.2}
-        />
-      </mesh>
-    </Float>
-  );
-}
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-function Particles() {
+    const particles: Array<{
+      x: number; y: number; size: number; speedX: number; speedY: number;
+      color: string; opacity: number;
+    }> = [];
+
+    for (let i = 0; i < 80; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 3 + 0.5,
+        speedX: (Math.random() - 0.5) * 0.5,
+        speedY: (Math.random() - 0.5) * 0.5,
+        color: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#f5576c'][Math.floor(Math.random() * 5)],
+        opacity: Math.random() * 0.5 + 0.2,
+      });
+    }
+
+    const lines: Array<{ from: number; to: number }> = [];
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        lines.push({ from: i, to: j });
+      }
+    }
+
+    function animate() {
+      ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
+      
+      particles.forEach((p, i) => {
+        p.x += p.speedX;
+        p.y += p.speedY;
+        if (p.x < 0 || p.x > canvas!.width) p.speedX *= -1;
+        if (p.y < 0 || p.y > canvas!.height) p.speedY *= -1;
+        
+        ctx!.beginPath();
+        ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx!.fillStyle = p.color;
+        ctx!.globalAlpha = p.opacity;
+        ctx!.fill();
+        
+        lines.forEach(line => {
+          if (line.from === i || line.to === i) {
+            const other = line.from === i ? particles[line.to] : particles[line.from];
+            const dist = Math.hypot(p.x - other.x, p.y - other.y);
+            if (dist < 120) {
+              ctx!.beginPath();
+              ctx!.moveTo(p.x, p.y);
+              ctx!.lineTo(other.x, other.y);
+              ctx!.strokeStyle = p.color;
+              ctx!.globalAlpha = 0.06;
+              ctx!.lineWidth = 0.5;
+              ctx!.stroke();
+            }
+          }
+        });
+      });
+      
+      ctx!.globalAlpha = 1;
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    <>
-      {[...Array(20)].map((_, i) => (
-        <Float key={i} speed={Math.random() * 2 + 1} rotationIntensity={0} floatIntensity={1}>
-          <mesh position={[
-            (Math.random() - 0.5) * 15,
-            (Math.random() - 0.5) * 10,
-            (Math.random() - 0.5) * 10
-          ]}>
-            <sphereGeometry args={[0.1, 4, 4]} />
-            <meshBasicMaterial color="#fff" />
-          </mesh>
-        </Float>
-      ))}
-    </>
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+      }}
+    />
   );
 }
 
@@ -80,30 +108,14 @@ export default function Home() {
       position: 'relative',
       overflow: 'hidden',
     }}>
-      {/* 3D Background */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-        <Canvas camera={{ position: [0, 0, 12], fov: 60 }}>
-          <Suspense fallback={null}>
-            <ambientLight intensity={0.5} />
-            <pointLight position={[10, 10, 10]} intensity={1} />
-            <Cube3D />
-            <Sphere3D />
-            <Torus3D />
-            <Particles />
-            <OrbitControls 
-              enableZoom={false}
-              autoRotate
-              autoRotateSpeed={0.5}
-              maxPolarAngle={Math.PI / 2}
-              minPolarAngle={Math.PI / 2}
-            />
-          </Suspense>
-        </Canvas>
-      </div>
+      <ParticleBackground />
 
-      {/* Content */}
       <div style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 24px' }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: 'clamp(40px, 8vw, 80px) clamp(16px, 4vw, 24px)',
+        }}>
           <motion.div
             initial={{ opacity: 0, y: 60 }}
             animate={{ opacity: 1, y: 0 }}
@@ -112,13 +124,12 @@ export default function Home() {
           >
             <motion.h1
               style={{
-                fontSize: '80px',
+                fontSize: 'clamp(36px, 10vw, 80px)',
                 fontWeight: '900',
                 background: 'linear-gradient(to right, #f093fb, #667eea, #f5576c)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                marginBottom: '20px',
-                textShadow: '0 0 80px rgba(102,126,234,0.5)',
+                marginBottom: '16px',
                 letterSpacing: '-2px',
                 lineHeight: '1.1',
               }}
@@ -133,9 +144,9 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
               style={{
-                fontSize: '26px',
+                fontSize: 'clamp(16px, 3vw, 26px)',
                 color: 'rgba(255,255,255,0.8)',
-                marginBottom: '12px',
+                marginBottom: '8px',
                 fontWeight: '300',
               }}
             >
@@ -147,9 +158,9 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
               style={{
-                fontSize: '20px',
+                fontSize: 'clamp(14px, 2.5vw, 20px)',
                 color: 'rgba(255,255,255,0.6)',
-                marginBottom: '48px',
+                marginBottom: 'clamp(30px, 5vw, 48px)',
                 fontWeight: '300',
               }}
             >
@@ -160,15 +171,20 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}
+              style={{
+                display: 'flex',
+                gap: 'clamp(10px, 2vw, 20px)',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+              }}
             >
               <Link href="/signup" style={{
                 background: 'linear-gradient(135deg, #667eea, #764ba2)',
                 color: 'white',
-                padding: '18px 48px',
+                padding: 'clamp(14px, 2vw, 18px) clamp(28px, 5vw, 48px)',
                 borderRadius: '50px',
                 textDecoration: 'none',
-                fontSize: '20px',
+                fontSize: 'clamp(15px, 2vw, 20px)',
                 fontWeight: '700',
                 boxShadow: '0 8px 32px rgba(102,126,234,0.4)',
                 transition: 'all 0.3s',
@@ -180,10 +196,10 @@ export default function Home() {
                 background: 'rgba(255,255,255,0.1)',
                 backdropFilter: 'blur(10px)',
                 color: 'white',
-                padding: '18px 48px',
+                padding: 'clamp(14px, 2vw, 18px) clamp(28px, 5vw, 48px)',
                 borderRadius: '50px',
                 textDecoration: 'none',
-                fontSize: '20px',
+                fontSize: 'clamp(15px, 2vw, 20px)',
                 fontWeight: '600',
                 border: '2px solid rgba(255,255,255,0.3)',
                 transition: 'all 0.3s',
@@ -193,58 +209,54 @@ export default function Home() {
             </motion.div>
           </motion.div>
 
-          {/* Features Cards with Glass Morphism */}
+          {/* Features Cards */}
           <motion.div
             initial={{ opacity: 0, y: 60 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.2 }}
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '32px',
-              marginTop: '100px',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: 'clamp(16px, 3vw, 32px)',
+              marginTop: 'clamp(50px, 8vw, 100px)',
             }}
           >
             {[
-              { icon: '🤖', title: 'AI Chat', desc: '24/7 intelligent conversations powered by advanced AI' },
-              { icon: '⚡', title: 'Fast & Easy', desc: 'Lightning quick responses for seamless experience' },
-              { icon: '🔒', title: '100% Secure', desc: 'Your data is protected with enterprise-grade security' },
+              { icon: '🤖', title: 'AI Chat', desc: '24/7 intelligent conversations' },
+              { icon: '⚡', title: 'Fast & Easy', desc: 'Lightning quick responses' },
+              { icon: '🔒', title: '100% Secure', desc: 'Your data is protected' },
             ].map((feature, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.4 + index * 0.2 }}
-                whileHover={{ 
-                  scale: 1.05, 
-                  boxShadow: '0 20px 60px rgba(102,126,234,0.3)',
-                  border: '1px solid rgba(102,126,234,0.5)',
-                }}
+                whileHover={{ scale: 1.03 }}
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
+                  background: 'rgba(255,255,255,0.04)',
                   backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '24px',
-                  padding: '40px',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 'clamp(16px, 3vw, 24px)',
+                  padding: 'clamp(24px, 4vw, 40px)',
                   textAlign: 'center',
                   transition: 'all 0.4s',
                   cursor: 'default',
                 }}
               >
-                <div style={{ fontSize: '60px', marginBottom: '20px' }}>
+                <div style={{ fontSize: 'clamp(40px, 8vw, 60px)', marginBottom: '16px' }}>
                   {feature.icon}
                 </div>
                 <h3 style={{
-                  fontSize: '28px',
+                  fontSize: 'clamp(20px, 3vw, 28px)',
                   fontWeight: '700',
                   color: 'white',
-                  marginBottom: '12px',
+                  marginBottom: '8px',
                 }}>
                   {feature.title}
                 </h3>
                 <p style={{
-                  fontSize: '16px',
-                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: 'clamp(13px, 2vw, 16px)',
+                  color: 'rgba(255,255,255,0.6)',
                   lineHeight: '1.6',
                 }}>
                   {feature.desc}
