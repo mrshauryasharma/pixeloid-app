@@ -1,296 +1,137 @@
-'use client';
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { User } from 'firebase/auth';
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, updateDoc } from 'firebase/firestore';
+import { NextResponse } from 'next/server';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
-type Message = {
-  id?: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-};
-
-type ChatSession = {
-  id: string;
-  title: string;
-  lastMessage: string;
-  createdAt: Date;
-};
-
-export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [credits, setCredits] = useState(20);
-  const [plan, setPlan] = useState('free');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string>('');
-  const [isMobile, setIsMobile] = useState(false);
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatLoadedRef = useRef(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) {
-        setMessages([{ role: 'assistant', content: '👋 Please login to use AI chat! Click Login/Sign Up above.', timestamp: new Date() }]);
-        setCredits(0);
-        setChatSessions([]);
-        chatLoadedRef.current = false;
-      } else {
-        fetchUserCredits(currentUser.uid);
-        if (!chatLoadedRef.current) {
-          loadChatSessions(currentUser.uid);
-          chatLoadedRef.current = true;
-        }
-      }
+async function checkCredits(userId: string, email: string): Promise<{ allowed: boolean; remaining: number; plan: string; isAdmin: boolean }> {
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
     });
-    return () => unsubscribe();
-  }, []);
+  }
 
-  const fetchUserCredits = async (uid: string) => {
-    try {
-      const res = await fetch('/api/credits', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: uid }),
-      });
-      const data = await res.json();
-      setCredits(data.credits || 20);
-      setPlan(data.plan || 'free');
-    } catch (error) {}
-  };
+  const db = getFirestore();
 
-  const loadChatSessions = (uid: string) => {
-    const chatsRef = collection(db, 'users', uid, 'chats');
-    const q = query(chatsRef, orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
-      const sessions: ChatSession[] = [];
-      snapshot.forEach((document) => {
-        const data = document.data();
-        sessions.push({
-          id: document.id,
-          title: data.title || 'New Chat',
-          lastMessage: data.lastMessage || '',
-          createdAt: data.createdAt?.toDate() || new Date(),
-        });
-      });
-      setChatSessions(sessions);
+  const adminDoc = await db.collection('admins').doc(email).get();
+  if (adminDoc.exists) {
+    return { allowed: true, remaining: 999999, plan: 'admin', isAdmin: true };
+  }
+
+  const userRef = db.collection('users').doc(userId);
+  const userDoc = await userRef.get();
+  const today = new Date().toDateString();
+
+  if (!userDoc.exists) {
+    await userRef.set({
+      email: email,
+      plan: 'free',
+      credits: 19,
+      dailyReset: today,
+      totalChats: 0,
+      createdAt: new Date(),
     });
-  };
+    return { allowed: true, remaining: 19, plan: 'free', isAdmin: false };
+  }
 
-  const createNewChat = () => {
-    setCurrentChatId('');
-    setMessages([{ 
-      role: 'assistant', 
-      content: `Hello ${user?.displayName || user?.email?.split('@')[0] || 'User'}! How can I help you today? ✨`, 
-      timestamp: new Date() 
-    }]);
-    if (isMobile) setSidebarOpen(false);
-  };
+  const data = userDoc.data()!;
 
-  const loadChat = (chatId: string) => {
-    setCurrentChatId(chatId);
-    const messagesRef = collection(db, 'users', user!.uid, 'chats', chatId, 'messages');
-    const q = query(messagesRef, orderBy('timestamp'));
-    return onSnapshot(q, (snapshot) => {
-      const msgs: Message[] = [];
-      snapshot.forEach((document) => {
-        const data = document.data();
-        msgs.push({
-          id: document.id,
-          role: data.role,
-          content: data.content,
-          timestamp: data.timestamp?.toDate() || new Date(),
-        });
-      });
-      setMessages(msgs.length > 0 ? msgs : [{ role: 'assistant', content: 'Start chatting! ✨', timestamp: new Date() }]);
-    });
-  };
+  if (!data.email) {
+    await userRef.update({ email: email });
+  }
 
-  const saveChatToFirestore = async (userMsg: Message, aiReply: string) => {
-    if (!user) return;
-    let chatId = currentChatId;
-    try {
-      if (!chatId) {
-        const chatRef = await addDoc(collection(db, 'users', user.uid, 'chats'), {
-          title: userMsg.content.substring(0, 50) || 'New Chat',
-          lastMessage: aiReply.substring(0, 100),
-          createdAt: Timestamp.now(),
-        });
-        chatId = chatRef.id;
-        setCurrentChatId(chatId);
-      } else {
-        const chatRef = doc(db, 'users', user.uid, 'chats', chatId);
-        await updateDoc(chatRef, { lastMessage: aiReply.substring(0, 100) });
-      }
-      const messagesRef = collection(db, 'users', user.uid, 'chats', chatId, 'messages');
-      await addDoc(messagesRef, { role: 'user', content: userMsg.content, timestamp: Timestamp.now() });
-      await addDoc(messagesRef, { role: 'assistant', content: aiReply, timestamp: Timestamp.now() });
-    } catch (error) {}
-  };
+  if (data.plan === 'yearly') {
+    return { allowed: true, remaining: 999, plan: 'yearly', isAdmin: false };
+  }
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  if (data.plan === 'free' && data.dailyReset !== today) {
+    await userRef.update({ credits: 20, dailyReset: today });
+    return { allowed: true, remaining: 20, plan: 'free', isAdmin: false };
+  }
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-    if (!user) { alert('Please login to chat!'); return; }
+  if (data.credits <= 0) {
+    return { allowed: false, remaining: 0, plan: data.plan, isAdmin: false };
+  }
 
-    const userMsg: Message = { role: 'user', content: input.trim(), timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setLoading(true);
+  await userRef.update({
+    credits: data.credits - 1,
+    totalChats: (data.totalChats || 0) + 1,
+  });
 
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: input.trim(), 
-          userId: user.uid,
-          email: user.email,
-        }),
-      });
-      const data = await res.json();
-      
-      if (data.error === 'limit_reached') {
-        const reply = `⚠️ ${data.reply}\n\n💎 Upgrade: Weekly ₹15 | Monthly ₹60 | Yearly ₹499`;
-        setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
-        await saveChatToFirestore(userMsg, reply);
-      } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.reply, timestamp: new Date() }]);
-        await saveChatToFirestore(userMsg, data.reply);
-        if (data.remaining !== undefined) setCredits(data.remaining);
-      }
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Error. Try again.', timestamp: new Date() }]);
-    } finally {
-      setLoading(false);
+  return { allowed: true, remaining: data.credits - 1, plan: data.plan, isAdmin: false };
+}
+
+export async function POST(request: Request) {
+  try {
+    const { message, userId, email } = await request.json();
+
+    if (!userId) {
+      return NextResponse.json({ reply: "Please login to use AI chat!", error: 'auth_required' });
     }
-  };
 
-  return (
-    <div style={{ display: 'flex', height: '100vh', background: '#0f0c29', overflow: 'hidden', width: '100%' }}>
-      
-      {/* ---- SIDEBAR ---- */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <>
-            {isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }} />}
-            <motion.div
-              initial={{ x: isMobile ? -300 : 0, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -300, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              style={{
-                position: isMobile ? 'fixed' : 'relative', left: 0, top: 0,
-                width: isMobile ? '85%' : 280, maxWidth: 320, height: '100vh',
-                background: 'rgba(15,12,41,0.98)', backdropFilter: 'blur(30px)',
-                borderRight: '1px solid rgba(255,255,255,0.06)', zIndex: 50, flexShrink: 0,
-                display: 'flex', flexDirection: 'column',
-              }}
-            >
-              <div style={{ padding: '16px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 style={{ color: 'white', fontSize: '16px', fontWeight: '700', margin: 0 }}>💬 Chats</h3>
-                  <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: '18px', cursor: 'pointer', padding: '4px' }}>✕</button>
-                </div>
-                <button onClick={createNewChat} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: '600', textAlign: 'left' }}>+ New Chat</button>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
-                {chatSessions.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 16px' }}>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>No conversations yet</p>
-                  </div>
-                ) : chatSessions.map((chat) => (
-                  <motion.div key={chat.id} whileTap={{ scale: 0.98 }}
-                    onClick={() => { loadChat(chat.id); if (isMobile) setSidebarOpen(false); }}
-                    style={{ padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', marginBottom: '4px', background: currentChatId === chat.id ? 'rgba(102,126,234,0.15)' : 'transparent' }}>
-                    <p style={{ color: 'white', fontSize: '13px', fontWeight: '600', margin: '0 0 3px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.title || 'New Chat'}</p>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.lastMessage || 'Empty chat'}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+    const creditCheck = await checkCredits(userId, email || '');
 
-      {/* ---- MAIN CHAT ---- */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', minWidth: 0, width: '100%' }}>
-        
-        {/* Top Bar */}
-        <div style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: isMobile ? '8px 12px' : '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', minWidth: 0 }}>
-            <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: 'white', fontSize: isMobile ? '18px' : '20px', cursor: 'pointer', padding: '4px', flexShrink: 0 }}>☰</button>
-            <h2 style={{ color: 'white', fontSize: isMobile ? '15px' : '18px', fontWeight: '700', margin: 0 }}>🤖 Pixeloid AI</h2>
-          </div>
-          {user && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px', flexShrink: 0 }}>
-              <span style={{ background: 'rgba(102,126,234,0.2)', color: '#667eea', padding: isMobile ? '2px 8px' : '4px 12px', borderRadius: '12px', fontSize: isMobile ? '10px' : '12px', fontWeight: '600' }}>{plan.toUpperCase()}</span>
-              <span style={{ color: credits <= 5 ? '#f5576c' : '#4facfe', fontSize: isMobile ? '16px' : '20px', fontWeight: '800' }}>{plan === 'yearly' ? '∞' : credits}</span>
-            </div>
-          )}
-        </div>
+    if (!creditCheck.allowed) {
+      return NextResponse.json({
+        reply: `⚠️ Your daily limit is over!\n\n💎 Upgrade:\n• Weekly ₹15 — 100 chats\n• Monthly ₹60 — 200 chats\n• Yearly ₹499 — Unlimited`,
+        error: 'limit_reached',
+        remaining: 0,
+        plan: creditCheck.plan,
+      });
+    }
 
-        {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px 14px' : '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px', WebkitOverflowScrolling: 'touch' }}>
-          {messages.map((msg, index) => (
-            <motion.div key={index} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-              <div style={{
-                maxWidth: isMobile ? '90%' : '72%', padding: isMobile ? '10px 14px' : '14px 18px',
-                borderRadius: '18px', color: 'white', fontSize: isMobile ? '13px' : '14.5px', lineHeight: '1.6',
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                background: msg.role === 'user' ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.06)',
-                border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.06)' : 'none',
-              }}>
-                {msg.content}
-              </div>
-            </motion.div>
-          ))}
-          {loading && <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', padding: '8px' }}>● Thinking...</div>}
-          <div ref={messagesEndRef} />
-        </div>
+    const lowerMsg = message.toLowerCase();
 
-        {/* Input */}
-        <div style={{ padding: isMobile ? '10px 12px' : '14px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: '24px', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <input
-              type="text" value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-              placeholder={user ? "Message Pixeloid AI..." : "Click Login/Sign Up to chat"}
-              disabled={!user}
-              style={{ flex: 1, padding: isMobile ? '12px 8px' : '14px 10px', background: 'transparent', border: 'none', color: 'white', fontSize: isMobile ? '13px' : '15px', outline: 'none', minWidth: 0, opacity: user ? 1 : 0.5 }}
-            />
-            <button onClick={sendMessage} disabled={!user || !input.trim() || loading}
-              style={{
-                background: input.trim() ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.08)',
-                border: 'none', color: 'white', borderRadius: '50%',
-                width: isMobile ? '36px' : '42px', height: isMobile ? '36px' : '42px',
-                cursor: input.trim() ? 'pointer' : 'not-allowed', fontSize: isMobile ? '16px' : '18px',
-                flexShrink: 0, opacity: input.trim() ? 1 : 0.4, transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-              ↑
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    // Check if user is asking about creator
+    if (
+      lowerMsg.includes('who made') || lowerMsg.includes('who created') || 
+      lowerMsg.includes('who built') || lowerMsg.includes('who developed') ||
+      lowerMsg.includes('kisne banaya') || lowerMsg.includes('kisne banayi') ||
+      lowerMsg.includes('owner') || lowerMsg.includes('creator') ||
+      lowerMsg.includes('malik') || lowerMsg.includes('banane wala') ||
+      lowerMsg.includes('kiska hai')
+    ) {
+      return NextResponse.json({
+        reply: "🚀 Pixeloid AI was created by **Shaurya Sharma** — a passionate full-stack developer!\n\nHe built this AI platform to help people in their daily lives with smart, fast, and friendly AI assistance.\n\n🌟 Check out his GitHub: https://github.com/mrshauryasharma",
+        remaining: creditCheck.remaining,
+        plan: creditCheck.plan,
+        isAdmin: creditCheck.isAdmin,
+      });
+    }
+
+    const apiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are Pixeloid AI, created by Shaurya Sharma. Keep responses concise, friendly, and helpful. When asked about your creator, mention Shaurya Sharma proudly.'
+          },
+          { role: 'user', content: message }
+        ],
+        max_tokens: 300,
+        temperature: 0.7,
+      }),
+    });
+
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content || 'Sorry, I could not process that.';
+
+    return NextResponse.json({
+      reply,
+      remaining: creditCheck.remaining,
+      plan: creditCheck.plan,
+      isAdmin: creditCheck.isAdmin,
+    });
+  } catch (error) {
+    return NextResponse.json({ reply: "AI service error. Try again later!" });
+  }
 }
