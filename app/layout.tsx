@@ -41,6 +41,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <Script src="https://checkout.razorpay.com/v1/checkout.js" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        
+        {/* PWA Meta Tags */}
+        <meta name="application-name" content="Pixeloid AI" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Pixeloid" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#667eea" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="manifest" href="/manifest.json" />
+        
+        <title>Pixeloid AI - Your Daily Life Assistant</title>
+        <meta name="description" content="AI-Powered Daily Life Assistant by Shaurya Sharma. Chat, Create, Automate!" />
       </head>
       <body style={{ margin: 0, padding: 0, overflowX: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#0f0c29' }}>
         {/* NAVBAR */}
@@ -300,7 +313,6 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
           position: 'relative',
         }}
       >
-        {/* Close Button */}
         <button
           onClick={onClose}
           style={{
@@ -323,7 +335,6 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
           ✕
         </button>
 
-        {/* Photo */}
         <div style={{
           width: '120px',
           height: '154px',
@@ -344,7 +355,6 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
           />
         </div>
 
-        {/* Name */}
         <h2 style={{
           color: 'white',
           fontSize: 'clamp(20px, 3vw, 26px)',
@@ -362,7 +372,6 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
           Full Stack Developer
         </p>
 
-        {/* Skills */}
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -385,7 +394,6 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
-        {/* Social Links */}
         <div style={{
           display: 'flex',
           gap: '12px',
