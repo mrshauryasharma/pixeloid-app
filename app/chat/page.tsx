@@ -1,10 +1,13 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { User } from 'firebase/auth';
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
+import { AISphere, Particles3D } from '@/components/3d/OrbModel';
 
 type Message = {
   id?: string;
@@ -63,10 +66,7 @@ export default function Chat() {
 
   const fetchUserCredits = async (uid: string) => {
     try {
-      const res = await fetch('/api/credits', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: uid }),
-      });
+      const res = await fetch('/api/credits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: uid }) });
       const data = await res.json();
       setCredits(data.credits || 20);
       setPlan(data.plan || 'free');
@@ -80,12 +80,7 @@ export default function Chat() {
       const sessions: ChatSession[] = [];
       snapshot.forEach((document) => {
         const data = document.data();
-        sessions.push({
-          id: document.id,
-          title: data.title || 'New Chat',
-          lastMessage: data.lastMessage || '',
-          createdAt: data.createdAt?.toDate() || new Date(),
-        });
+        sessions.push({ id: document.id, title: data.title || 'New Chat', lastMessage: data.lastMessage || '', createdAt: data.createdAt?.toDate() || new Date() });
       });
       setChatSessions(sessions);
     });
@@ -93,11 +88,7 @@ export default function Chat() {
 
   const createNewChat = () => {
     setCurrentChatId('');
-    setMessages([{ 
-      role: 'assistant', 
-      content: `Hello ${user?.displayName || user?.email?.split('@')[0] || 'User'}! How can I help you today? ✨`, 
-      timestamp: new Date() 
-    }]);
+    setMessages([{ role: 'assistant', content: `Hello ${user?.displayName || user?.email?.split('@')[0] || 'User'}! How can I help you today? ✨`, timestamp: new Date() }]);
     if (isMobile) setSidebarOpen(false);
   };
 
@@ -109,12 +100,7 @@ export default function Chat() {
       const msgs: Message[] = [];
       snapshot.forEach((document) => {
         const data = document.data();
-        msgs.push({
-          id: document.id,
-          role: data.role,
-          content: data.content,
-          timestamp: data.timestamp?.toDate() || new Date(),
-        });
+        msgs.push({ id: document.id, role: data.role, content: data.content, timestamp: data.timestamp?.toDate() || new Date() });
       });
       setMessages(msgs.length > 0 ? msgs : [{ role: 'assistant', content: 'Start chatting! ✨', timestamp: new Date() }]);
     });
@@ -123,52 +109,31 @@ export default function Chat() {
   const deleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm('Delete this chat permanently?')) return;
-    
     try {
-      // Delete all messages in chat
       const messagesRef = collection(db, 'users', user!.uid, 'chats', chatId, 'messages');
-      const snapshot = await import('firebase/firestore').then(m => {
-        return m.getDocs(query(messagesRef));
-      });
-      
+      const snapshot = await getDocs(query(messagesRef));
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
-      
-      // Delete chat document
       await deleteDoc(doc(db, 'users', user!.uid, 'chats', chatId));
-      
-      if (currentChatId === chatId) {
-        createNewChat();
-      }
-    } catch (error) {
-      console.error('Error deleting chat:', error);
-    }
+      if (currentChatId === chatId) createNewChat();
+    } catch (error) {}
   };
 
   const deleteAllChats = async () => {
-    if (!confirm('⚠️ Delete ALL chat history? This cannot be undone!')) return;
-    
+    if (!confirm('⚠️ Delete ALL chat history?')) return;
     try {
-      const snapshot = await import('firebase/firestore').then(m => {
-        return m.getDocs(collection(db, 'users', user!.uid, 'chats'));
-      });
-      
+      const snapshot = await getDocs(collection(db, 'users', user!.uid, 'chats'));
       const batch = writeBatch(db);
       for (const chatDoc of snapshot.docs) {
-        const messagesSnapshot = await import('firebase/firestore').then(m => {
-          return m.getDocs(collection(db, 'users', user!.uid, 'chats', chatDoc.id, 'messages'));
-        });
+        const messagesSnapshot = await getDocs(collection(db, 'users', user!.uid, 'chats', chatDoc.id, 'messages'));
         messagesSnapshot.docs.forEach((msgDoc) => batch.delete(msgDoc.ref));
         batch.delete(chatDoc.ref);
       }
       await batch.commit();
-      
       setChatSessions([]);
       createNewChat();
-    } catch (error) {
-      console.error('Error deleting all chats:', error);
-    }
+    } catch (error) {}
   };
 
   const saveChatToFirestore = async (userMsg: Message, aiReply: string) => {
@@ -176,16 +141,11 @@ export default function Chat() {
     let chatId = currentChatId;
     try {
       if (!chatId) {
-        const chatRef = await addDoc(collection(db, 'users', user.uid, 'chats'), {
-          title: userMsg.content.substring(0, 50) || 'New Chat',
-          lastMessage: aiReply.substring(0, 100),
-          createdAt: Timestamp.now(),
-        });
+        const chatRef = await addDoc(collection(db, 'users', user.uid, 'chats'), { title: userMsg.content.substring(0, 50) || 'New Chat', lastMessage: aiReply.substring(0, 100), createdAt: Timestamp.now() });
         chatId = chatRef.id;
         setCurrentChatId(chatId);
       } else {
-        const chatRef = doc(db, 'users', user.uid, 'chats', chatId);
-        await updateDoc(chatRef, { lastMessage: aiReply.substring(0, 100) });
+        await updateDoc(doc(db, 'users', user.uid, 'chats', chatId), { lastMessage: aiReply.substring(0, 100) });
       }
       const messagesRef = collection(db, 'users', user.uid, 'chats', chatId, 'messages');
       await addDoc(messagesRef, { role: 'user', content: userMsg.content, timestamp: Timestamp.now() });
@@ -193,27 +153,18 @@ export default function Chat() {
     } catch (error) {}
   };
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
     if (!user) { alert('Please login to chat!'); return; }
-
     const userMsg: Message = { role: 'user', content: input.trim(), timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
-
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input.trim(), userId: user.uid, email: user.email }),
-      });
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: input.trim(), userId: user.uid, email: user.email }) });
       const data = await res.json();
-      
       if (data.error === 'limit_reached') {
         const reply = `⚠️ ${data.reply}\n\n💎 Upgrade: Weekly ₹15 | Monthly ₹60 | Yearly ₹499`;
         setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
@@ -225,9 +176,7 @@ export default function Chat() {
       }
     } catch (error) {
       setMessages(prev => [...prev, { role: 'assistant', content: '❌ Error. Try again.', timestamp: new Date() }]);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -238,41 +187,23 @@ export default function Chat() {
         {sidebarOpen && (
           <>
             {isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }} />}
-            <motion.div
-              initial={{ x: isMobile ? -300 : 0, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -300, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              style={{
-                position: isMobile ? 'fixed' : 'relative', left: 0, top: 0,
-                width: isMobile ? '85%' : 280, maxWidth: 320, height: '100vh',
-                background: 'rgba(15,12,41,0.98)', backdropFilter: 'blur(30px)',
-                borderRight: '1px solid rgba(255,255,255,0.06)', zIndex: 50, flexShrink: 0,
-                display: 'flex', flexDirection: 'column',
-              }}
-            >
+            <motion.div initial={{ x: isMobile ? -300 : 0, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -300, opacity: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} style={{ position: isMobile ? 'fixed' : 'relative', left: 0, top: 0, width: isMobile ? '85%' : 280, maxWidth: 320, height: '100vh', background: 'rgba(15,12,41,0.98)', backdropFilter: 'blur(30px)', borderRight: '1px solid rgba(255,255,255,0.06)', zIndex: 50, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '16px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h3 style={{ color: 'white', fontSize: '16px', fontWeight: '700', margin: 0 }}>💬 Chats</h3>
                   <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: '18px', cursor: 'pointer', padding: '4px' }}>✕</button>
                 </div>
                 <button onClick={createNewChat} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(102,126,234,0.2)', border: '1px solid rgba(102,126,234,0.3)', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: '600', textAlign: 'left', marginBottom: '8px' }}>+ New Chat</button>
-                {chatSessions.length > 0 && (
-                  <button onClick={deleteAllChats} style={{ width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(245,87,108,0.15)', border: '1px solid rgba(245,87,108,0.25)', color: '#f5576c', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🗑️ Delete All Chats</button>
-                )}
+                {chatSessions.length > 0 && <button onClick={deleteAllChats} style={{ width: '100%', padding: '8px', borderRadius: '8px', background: 'rgba(245,87,108,0.15)', border: '1px solid rgba(245,87,108,0.25)', color: '#f5576c', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>🗑️ Delete All</button>}
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
-                {chatSessions.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 16px' }}><p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>No conversations yet</p></div>
-                ) : chatSessions.map((chat) => (
-                  <motion.div key={chat.id} whileTap={{ scale: 0.98 }}
-                    onClick={() => { loadChat(chat.id); if (isMobile) setSidebarOpen(false); }}
-                    style={{ padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', marginBottom: '4px', background: currentChatId === chat.id ? 'rgba(102,126,234,0.15)' : 'transparent', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {chatSessions.length === 0 ? <div style={{ textAlign: 'center', padding: '40px 16px' }}><p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>No conversations yet</p></div> : chatSessions.map((chat) => (
+                  <motion.div key={chat.id} whileTap={{ scale: 0.98 }} onClick={() => { loadChat(chat.id); if (isMobile) setSidebarOpen(false); }} style={{ padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', marginBottom: '4px', background: currentChatId === chat.id ? 'rgba(102,126,234,0.15)' : 'transparent', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ color: 'white', fontSize: '13px', fontWeight: '600', margin: '0 0 3px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.title || 'New Chat'}</p>
                       <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.lastMessage || 'Empty chat'}</p>
                     </div>
-                    <button onClick={(e) => deleteChat(chat.id, e)} style={{ background: 'none', border: 'none', color: 'rgba(245,87,108,0.6)', fontSize: '14px', cursor: 'pointer', padding: '4px', flexShrink: 0, marginLeft: '8px' }} title="Delete chat">🗑️</button>
+                    <button onClick={(e) => deleteChat(chat.id, e)} style={{ background: 'none', border: 'none', color: 'rgba(245,87,108,0.6)', fontSize: '14px', cursor: 'pointer', padding: '4px', flexShrink: 0, marginLeft: '8px' }}>🗑️</button>
                   </motion.div>
                 ))}
               </div>
@@ -284,6 +215,20 @@ export default function Chat() {
       {/* MAIN CHAT */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', minWidth: 0, width: '100%' }}>
         
+        {/* 3D AI Sphere */}
+        <div style={{ height: '180px', background: 'rgba(0,0,0,0.3)', position: 'relative', flexShrink: 0 }}>
+          <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
+            <Suspense fallback={null}>
+              <ambientLight intensity={0.5} />
+              <pointLight position={[10, 10, 10]} intensity={1} />
+              <AISphere />
+              <Particles3D />
+              <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={1} />
+            </Suspense>
+          </Canvas>
+        </div>
+
+        {/* Top Bar */}
         <div style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: isMobile ? '8px 12px' : '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', minWidth: 0 }}>
             <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: 'white', fontSize: isMobile ? '18px' : '20px', cursor: 'pointer', padding: '4px', flexShrink: 0 }}>☰</button>
@@ -297,17 +242,11 @@ export default function Chat() {
           )}
         </div>
 
+        {/* Messages */}
         <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px 14px' : '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px', WebkitOverflowScrolling: 'touch' }}>
           {messages.map((msg, index) => (
-            <motion.div key={index} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-              <div style={{
-                maxWidth: isMobile ? '90%' : '72%', padding: isMobile ? '10px 14px' : '14px 18px',
-                borderRadius: '18px', color: 'white', fontSize: isMobile ? '13px' : '14.5px', lineHeight: '1.6',
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                background: msg.role === 'user' ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.06)',
-                border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.06)' : 'none',
-              }}>
+            <motion.div key={index} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div style={{ maxWidth: isMobile ? '90%' : '72%', padding: isMobile ? '10px 14px' : '14px 18px', borderRadius: '18px', color: 'white', fontSize: isMobile ? '13px' : '14.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: msg.role === 'user' ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.06)', border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                 {msg.content}
               </div>
             </motion.div>
@@ -316,26 +255,11 @@ export default function Chat() {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Input */}
         <div style={{ padding: isMobile ? '10px 12px' : '14px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: '24px', padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <input
-              type="text" value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-              placeholder={user ? "Message Pixeloid AI..." : "Click Login/Sign Up to chat"}
-              disabled={!user}
-              style={{ flex: 1, padding: isMobile ? '12px 8px' : '14px 10px', background: 'transparent', border: 'none', color: 'white', fontSize: isMobile ? '13px' : '15px', outline: 'none', minWidth: 0, opacity: user ? 1 : 0.5 }}
-            />
-            <button onClick={sendMessage} disabled={!user || !input.trim() || loading}
-              style={{
-                background: input.trim() ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.08)',
-                border: 'none', color: 'white', borderRadius: '50%',
-                width: isMobile ? '36px' : '42px', height: isMobile ? '36px' : '42px',
-                cursor: input.trim() ? 'pointer' : 'not-allowed', fontSize: isMobile ? '16px' : '18px',
-                flexShrink: 0, opacity: input.trim() ? 1 : 0.4, transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-              ↑
-            </button>
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder={user ? "Message Pixeloid AI..." : "Click Login/Sign Up to chat"} disabled={!user} style={{ flex: 1, padding: isMobile ? '12px 8px' : '14px 10px', background: 'transparent', border: 'none', color: 'white', fontSize: isMobile ? '13px' : '15px', outline: 'none', minWidth: 0, opacity: user ? 1 : 0.5 }} />
+            <button onClick={sendMessage} disabled={!user || !input.trim() || loading} style={{ background: input.trim() ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.08)', border: 'none', color: 'white', borderRadius: '50%', width: isMobile ? '36px' : '42px', height: isMobile ? '36px' : '42px', cursor: input.trim() ? 'pointer' : 'not-allowed', fontSize: isMobile ? '16px' : '18px', flexShrink: 0, opacity: input.trim() ? 1 : 0.4, transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↑</button>
           </div>
         </div>
       </div>
