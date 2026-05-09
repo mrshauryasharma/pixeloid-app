@@ -307,7 +307,7 @@ export default function Chat() {
 
         <div style={{ padding: isMobile ? '10px 12px' : '14px 60px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0, position: 'relative', zIndex: 2, background: 'rgba(15,12,41,0.9)' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: 24, padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } }} placeholder={user ? "Message or 'Generate image of lion'" : "Login to chat"} disabled={!user} style={{ flex: 1, padding: '12px 8px', background: 'transparent', border: 'none', color: 'white', fontSize: 14, outline: 'none', opacity: user ? 1 : 0.5 }} />
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } }} placeholder={user ? "Message" : "Login to chat"} disabled={!user} style={{ flex: 1, padding: '12px 8px', background: 'transparent', border: 'none', color: 'white', fontSize: 14, outline: 'none', opacity: user ? 1 : 0.5 }} />
             <button onClick={sendMessage} disabled={!user || !input.trim() || loading} style={{ background: input.trim() ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.08)', border: 'none', color: 'white', borderRadius: '50%', width: 38, height: 38, cursor: input.trim() ? 'pointer' : 'not-allowed', fontSize: 16, flexShrink: 0, opacity: input.trim() ? 1 : 0.4 }}>↑</button>
           </div>
         </div>
