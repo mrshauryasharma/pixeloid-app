@@ -19,7 +19,6 @@ export default function manifest(): MetadataRoute.Manifest {
     launch_handler: {
       client_mode: 'focus-existing',
     },
-    iarc_rating_id: 'e58c174a-81d2-5c3c-32cc-34b8de4a52ee',
     related_applications: [],
     prefer_related_applications: false,
     scope_extensions: [
