@@ -21,9 +21,6 @@ export default function manifest(): MetadataRoute.Manifest {
     },
     related_applications: [],
     prefer_related_applications: false,
-    scope_extensions: [
-      { origin: 'https://pixeloidpro.live' },
-    ],
     shortcuts: [
       {
         name: 'AI Chat',
