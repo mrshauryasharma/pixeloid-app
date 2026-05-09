@@ -88,7 +88,7 @@ export function TorusModel() {
 export function Particles3D() {
   const count = 200;
   const positions = new Float32Array(count * 3);
-  
+
   for (let i = 0; i < count; i++) {
     positions[i * 3] = (Math.random() - 0.5) * 15;
     positions[i * 3 + 1] = (Math.random() - 0.5) * 10;
@@ -109,6 +109,7 @@ export function Particles3D() {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
+          args={[positions, 3]}
           count={count}
           array={positions}
           itemSize={3}
