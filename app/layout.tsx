@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="https://checkout.razorpay.com/v1/checkout.js" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
       </head>
-      <body style={{ margin: 0, padding: 0, overflowX: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <body style={{ margin: 0, padding: 0, overflowX: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#0f0c29' }}>
         {/* NAVBAR */}
         <nav style={{
           background: 'linear-gradient(135deg, #667eea, #764ba2)',
@@ -115,7 +115,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
 
-        {/* FOOTER */}
+        {/* FOOTER - Har Page Pe Dikhega */}
         <Footer />
       </body>
     </html>
@@ -206,82 +206,43 @@ function NavLinks({ user, loading, handleLogout, closeMenu, isMobile }: {
   );
 }
 
-// Footer Component
+// Footer Component - Har Page Pe Dikhega
 function Footer() {
   return (
     <footer style={{
-      background: 'linear-gradient(135deg, rgba(15,12,41,1), rgba(48,43,99,1))',
-      borderTop: '1px solid rgba(255,255,255,0.06)',
-      padding: 'clamp(20px, 3vw, 30px) clamp(16px, 3vw, 24px)',
+      background: 'linear-gradient(135deg, #0f0c29, #1a1040)',
+      borderTop: '2px solid rgba(102,126,234,0.3)',
+      padding: 'clamp(16px, 2vw, 24px) clamp(12px, 2vw, 16px)',
       width: '100%',
+      flexShrink: 0,
     }}>
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px',
+        textAlign: 'center',
       }}>
-        {/* Left */}
-        <div>
-          <h3 style={{
-            fontSize: 'clamp(16px, 2.5vw, 20px)',
-            fontWeight: '800',
-            color: 'white',
-            margin: '0 0 4px 0',
-          }}>
-            🚀 Pixeloid
-          </h3>
-          <p style={{
-            color: 'rgba(255,255,255,0.4)',
-            fontSize: 'clamp(11px, 1.5vw, 13px)',
-            margin: 0,
-          }}>
-            © {new Date().getFullYear()} Pixeloid. All rights reserved.
-          </p>
-        </div>
-
-        {/* Center - Creator Credit */}
-        <div style={{ textAlign: 'center' }}>
-          <p style={{
-            color: 'rgba(255,255,255,0.5)',
-            fontSize: 'clamp(12px, 1.8vw, 14px)',
-            margin: '0 0 4px 0',
-            fontWeight: '500',
-          }}>
-            Designed & Developed by
-          </p>
+        <p style={{
+          color: 'rgba(255,255,255,0.6)',
+          fontSize: 'clamp(11px, 1.5vw, 13px)',
+          margin: '0 0 6px 0',
+          fontWeight: '500',
+        }}>
+          © {new Date().getFullYear()} <span style={{ color: '#f093fb', fontWeight: '700' }}>Pixeloid</span>. All rights reserved.
+        </p>
+        <p style={{
+          color: 'rgba(255,255,255,0.4)',
+          fontSize: 'clamp(10px, 1.3vw, 12px)',
+          margin: 0,
+        }}>
+          Designed & Developed by{' '}
           <a href="https://github.com/mrshauryasharma" target="_blank" rel="noopener noreferrer" style={{
-            color: '#f093fb',
-            fontSize: 'clamp(14px, 2vw, 16px)',
+            color: '#667eea',
             fontWeight: '700',
             textDecoration: 'none',
-            letterSpacing: '0.5px',
-            transition: 'all 0.3s',
           }}>
-            ⚡ Shaurya Sharma
+            Shaurya Sharma
           </a>
-        </div>
-
-        {/* Right - Links */}
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {[
-            { label: 'Privacy', href: '#' },
-            { label: 'Terms', href: '#' },
-            { label: 'Contact', href: '#' },
-          ].map((link, i) => (
-            <a key={i} href={link.href} style={{
-              color: 'rgba(255,255,255,0.4)',
-              fontSize: '12px',
-              textDecoration: 'none',
-              transition: 'color 0.3s',
-            }}>
-              {link.label}
-            </a>
-          ))}
-        </div>
+        </p>
       </div>
     </footer>
   );
