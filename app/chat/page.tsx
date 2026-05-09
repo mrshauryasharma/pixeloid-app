@@ -6,7 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { User } from 'firebase/auth';
 import { collection, addDoc, query, orderBy, onSnapshot, Timestamp, doc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Canvas } from '@react-three/fiber';
-import { RobotModel, Particles3D } from '@/components/3d/RobotModel';
+import { RobotModel } from '@/components/3d/RobotModel';
 
 type Message = {
   id?: string;
@@ -233,7 +233,6 @@ export default function Chat() {
               <ambientLight intensity={0.3} />
               <pointLight position={[5, 5, 5]} intensity={0.5} />
               <RobotModel />
-              <Particles3D />
             </Suspense>
           </Canvas>
         </div>
