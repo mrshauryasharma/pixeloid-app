@@ -51,44 +51,6 @@ async function getConversationHistory(userId: string, chatId: string): Promise<A
   return history;
 }
 
-async function generateImage(prompt: string): Promise<string | null> {
-  try {
-    const seed = Math.floor(Math.random() * 1000000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&nofeed=true`;
-    return imageUrl;
-  } catch (error) {
-    return null;
-  }
-}
-
-function isImageRequest(message: string): { isImage: boolean; prompt: string } {
-  const lower = message.toLowerCase();
-  const imageTriggers = [
-    'generate image', 'create image', 'make image', 'draw',
-    'generate a picture', 'create a picture', 'make a picture',
-    'image of', 'picture of', 'genrate image', 'generate photo',
-    'create photo', 'make photo', 'genrate photo',
-    'image generate', 'image create', 'image banao',
-    'image generate karo', 'photo banao', 'photo generate karo',
-    'tasveer banao', 'tasveer generate karo',
-    'ek image', 'ek photo', 'ek tasveer',
-    'img genrat', 'img generate', 'img banao',
-    'image genrat', 'image genrate',
-  ];
-
-  for (const trigger of imageTriggers) {
-    if (lower.includes(trigger)) {
-      const index = lower.indexOf(trigger) + trigger.length;
-      let prompt = message.substring(index).trim();
-      prompt = prompt.replace(/^(of|a|an|the|please|can you|ek|mujhe|meri|ki|ka|kardo|kar do|dena|de do|dikhao|banao)\s+/i, '');
-      prompt = prompt.replace(/[📍🖼️🎨]/g, '').trim();
-      if (prompt.length < 3) prompt = message.substring(0, 100);
-      return { isImage: true, prompt };
-    }
-  }
-  return { isImage: false, prompt: '' };
-}
-
 export async function POST(request: Request) {
   try {
     const { message, userId, email, chatId } = await request.json();
@@ -125,22 +87,6 @@ export async function POST(request: Request) {
         reply: "🔒 I'm **Pixeloid AI** — a custom-built AI assistant created by **Shaurya Sharma**.\n\nMy technology architecture is proprietary and custom-designed.\n\n🎯 I'm here to help you — ask me anything!",
         remaining: creditCheck.remaining, plan: creditCheck.plan, isAdmin: creditCheck.isAdmin,
       });
-    }
-
-    // Image generation - CHECK FIRST before normal chat
-    const imageCheck = isImageRequest(message);
-    if (imageCheck.isImage) {
-      const imageUrl = await generateImage(imageCheck.prompt);
-      if (imageUrl) {
-        return NextResponse.json({
-          reply: `🎨 Here's your generated image: **${imageCheck.prompt}**\n\n🖼️ Image is ready! Click download to save it.`,
-          imageUrl: imageUrl,
-          imagePrompt: imageCheck.prompt,
-          remaining: creditCheck.remaining,
-          plan: creditCheck.plan,
-          isAdmin: creditCheck.isAdmin,
-        });
-      }
     }
 
     // Normal chat
