@@ -323,22 +323,25 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
           ✕
         </button>
 
-        {/* Avatar */}
+        {/* Photo */}
         <div style={{
-          width: '80px',
-          height: '80px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #667eea, #f093fb)',
+          width: '120px',
+          height: '154px',
+          borderRadius: '16px',
+          overflow: 'hidden',
           margin: '0 auto 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '36px',
-          fontWeight: '800',
-          color: 'white',
-          border: '3px solid rgba(255,255,255,0.2)',
+          border: '3px solid rgba(102,126,234,0.5)',
+          boxShadow: '0 8px 24px rgba(102,126,234,0.3)',
         }}>
-          SS
+          <img
+            src="/shaurya.jpg"
+            alt="Shaurya Sharma"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
         </div>
 
         {/* Name */}
@@ -367,7 +370,7 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
           justifyContent: 'center',
           marginBottom: '24px',
         }}>
-          {['UI / UX', 'Frontend Development', 'HTML', 'CSS', 'JavaScript', 'PHP', 'Laravel', 'Java'].map((skill, i) => (
+          {['UI / UX', 'Frontend Development', 'HTML', 'CSS', 'JavaScript', 'PHP', 'Java'].map((skill, i) => (
             <span key={i} style={{
               background: 'rgba(102,126,234,0.15)',
               border: '1px solid rgba(102,126,234,0.25)',
