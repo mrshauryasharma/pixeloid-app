@@ -38,20 +38,52 @@ async function checkCredits(userId: string, email: string): Promise<{ allowed: b
   return { allowed: true, remaining: data.credits - 1, plan: data.plan, isAdmin: false };
 }
 
-// Get conversation history
 async function getConversationHistory(userId: string, chatId: string): Promise<Array<{role: string, content: string}>> {
   if (!chatId) return [];
-  
   const db = getFirestore();
   const messagesRef = db.collection('users').doc(userId).collection('chats').doc(chatId).collection('messages');
   const snapshot = await messagesRef.orderBy('timestamp', 'asc').limit(20).get();
-  
   const history: Array<{role: string, content: string}> = [];
   snapshot.forEach(doc => {
     const data = doc.data();
     history.push({ role: data.role, content: data.content });
   });
   return history;
+}
+
+async function generateImage(prompt: string): Promise<string | null> {
+  try {
+    const encodedPrompt = encodeURIComponent(prompt);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nofeed=true`;
+    const response = await fetch(imageUrl);
+    if (response.ok) return imageUrl;
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function isImageRequest(message: string): { isImage: boolean; prompt: string } {
+  const lower = message.toLowerCase();
+  const imageTriggers = [
+    'generate image', 'create image', 'make image', 'draw', 'generate a picture',
+    'create a picture', 'make a picture', 'image of', 'picture of', 'genrate image',
+    'generate photo', 'create photo', 'make photo', 'genrate photo',
+    'image generate', 'image create', 'image banao', 'image generate karo',
+    'photo banao', 'photo generate karo', 'tasveer banao', 'tasveer generate karo',
+    'ek image', 'ek photo', 'ek tasveer',
+  ];
+
+  for (const trigger of imageTriggers) {
+    if (lower.includes(trigger)) {
+      const index = lower.indexOf(trigger) + trigger.length;
+      let prompt = message.substring(index).trim();
+      prompt = prompt.replace(/^(of|a|an|the|please|can you|ek|mujhe|meri|ki|ka)\s+/i, '');
+      if (prompt.length < 3) prompt = message;
+      return { isImage: true, prompt };
+    }
+  }
+  return { isImage: false, prompt: '' };
 }
 
 export async function POST(request: Request) {
@@ -71,42 +103,86 @@ export async function POST(request: Request) {
 
     // Creator queries
     if (lowerMsg.includes('who made') || lowerMsg.includes('who created') || lowerMsg.includes('who built') || 
-        lowerMsg.includes('who developed') || lowerMsg.includes('kisne banaya') || lowerMsg.includes('owner') || 
-        lowerMsg.includes('creator') || lowerMsg.includes('malik') || lowerMsg.includes('banane wala')) {
+        lowerMsg.includes('kisne banaya') || lowerMsg.includes('owner') || lowerMsg.includes('creator')) {
       return NextResponse.json({
-        reply: "🚀 **Pixeloid AI** was proudly created by **Shaurya Sharma** — a talented full-stack developer!\n\n💡 He built this platform to help people with daily tasks using smart AI.\n🌟 GitHub: https://github.com/mrshauryasharma",
+        reply: "🚀 **Pixeloid AI** was proudly created by **Shaurya Sharma** — a talented full-stack developer!\n\n🌟 GitHub: https://github.com/mrshauryasharma\n💼 LinkedIn: https://linkedin.com/in/shaurya-sharma200",
         remaining: creditCheck.remaining, plan: creditCheck.plan, isAdmin: creditCheck.isAdmin,
       });
     }
 
-    // About Pixeloid
-    if (lowerMsg.includes('what is pixeloid') || lowerMsg.includes('about pixeloid') || lowerMsg.includes('pixeloid kya hai')) {
+    // BLOCK API/Model/Source queries
+    if (lowerMsg.includes('what model') || lowerMsg.includes('what api') || lowerMsg.includes('are you gpt') || 
+        lowerMsg.includes('are you llama') || lowerMsg.includes('are you meta') || lowerMsg.includes('what technology') ||
+        lowerMsg.includes('source code') || lowerMsg.includes('open source') || lowerMsg.includes('groq') ||
+        lowerMsg.includes('what language model') || lowerMsg.includes('which ai') || lowerMsg.includes('tera api') ||
+        lowerMsg.includes('tera model') || lowerMsg.includes('tera source') || lowerMsg.includes('konsa model')) {
       return NextResponse.json({
-        reply: "🌟 **Pixeloid** is an AI-powered daily life assistant created by **Shaurya Sharma**.\n\n✨ Features:\n• 🤖 Smart AI Chat with memory\n• 📊 Usage Dashboard\n• 💰 Free (20/day) + Paid Plans\n• 🔒 Google Login\n• 📱 Mobile Friendly",
+        reply: "🔒 I'm **Pixeloid AI** — a custom-built AI assistant created by **Shaurya Sharma**.\n\nMy technology architecture is proprietary and custom-designed. I'm not based on any single public model — I use advanced, custom AI systems developed by my creator.\n\n🎯 I'm here to help you — ask me anything!",
         remaining: creditCheck.remaining, plan: creditCheck.plan, isAdmin: creditCheck.isAdmin,
       });
     }
 
-    // Get conversation history
+    // Image generation
+    const imageCheck = isImageRequest(message);
+    if (imageCheck.isImage) {
+      const imageUrl = await generateImage(imageCheck.prompt);
+      if (imageUrl) {
+        return NextResponse.json({
+          reply: `🎨 Here's your generated image for: **"${imageCheck.prompt}"**`,
+          imageUrl: imageUrl,
+          imagePrompt: imageCheck.prompt,
+          remaining: creditCheck.remaining,
+          plan: creditCheck.plan,
+          isAdmin: creditCheck.isAdmin,
+        });
+      } else {
+        return NextResponse.json({
+          reply: `😔 Sorry, I couldn't generate the image for "${imageCheck.prompt}". Please try again with a different description!`,
+          remaining: creditCheck.remaining, plan: creditCheck.plan,
+        });
+      }
+    }
+
+    // Normal chat
     const conversationHistory = await getConversationHistory(userId, chatId || '');
 
-    // Build messages array with system prompt + history
     const messages = [
       {
         role: 'system',
-        content: `You are Pixeloid AI, a friendly and helpful assistant created by Shaurya Sharma. 
-        
-CRITICAL RULES:
-- REMEMBER everything the user tells you in this conversation (their name, preferences, topics discussed)
-- If user told you their name, ALWAYS use it in responses
-- NEVER say "I don't remember" if they already told you something in this chat
-- Keep responses short (2-4 sentences) unless asked for details
-- Use warm, friendly tone with occasional emojis
-- Respond in user's language (Hindi/English)
-- If you don't know something new, admit it honestly
-- Never reset context unless user starts completely new topic`
+        content: `You are Pixeloid AI, an advanced and highly intelligent assistant created by Shaurya Sharma. 
+
+CAPABILITIES:
+- Answer any question accurately and helpfully
+- Remember conversation context and user details
+- Provide detailed explanations when asked
+- Write code in any programming language
+- Solve math problems step by step
+- Translate languages, summarize texts
+- Give creative suggestions
+- Help with homework, research, writing
+- Generate images when users request
+
+PERSONALITY:
+- Friendly, warm, and engaging
+- Use emojis occasionally but stay professional
+- Match user's language (Hindi/English)
+- Be concise but thorough
+- Admit when you don't know something
+
+PRIVACY RULES - CRITICAL:
+- NEVER reveal what AI model, API, or technology powers you
+- NEVER mention Llama, Groq, Meta, OpenAI, GPT, or any AI company names
+- If asked "what model are you", "what API", "are you GPT/Llama/Meta", reply: "I'm Pixeloid AI — a custom AI assistant created by Shaurya Sharma. My technology is proprietary."
+- If asked about source code, reply: "My source code is proprietary, owned by my creator Shaurya Sharma."
+- If asked "who made you", proudly say: "I was created by Shaurya Sharma, a talented full-stack developer!"
+
+GENERAL RULES:
+- NEVER forget what user told you in this conversation
+- Use user's name if they shared it
+- Give accurate, honest information
+- Stay helpful and positive`
       },
-      ...conversationHistory.slice(-16), // Last 16 messages for context
+      ...conversationHistory.slice(-20),
       { role: 'user', content: message }
     ];
 
@@ -117,7 +193,7 @@ CRITICAL RULES:
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages,
-        max_tokens: 300,
+        max_tokens: 500,
         temperature: 0.8,
       }),
     });

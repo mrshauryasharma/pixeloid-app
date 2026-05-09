@@ -1,12 +1,9 @@
 'use client';
 import { motion } from 'framer-motion';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { User } from 'firebase/auth';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import { RobotModel, OrbitingParticles } from '@/components/3d/RobotModel';
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -38,20 +35,6 @@ export default function Dashboard() {
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', padding: 'clamp(20px, 4vw, 40px)' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        
-        {/* 3D Robot Header */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ position: 'relative', height: '220px', marginBottom: '30px', borderRadius: '24px', overflow: 'hidden', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <Canvas camera={{ position: [0, 1.5, 8], fov: 50 }}>
-            <Suspense fallback={null}>
-              <ambientLight intensity={0.4} />
-              <directionalLight position={[5, 5, 5]} intensity={0.6} />
-              <pointLight position={[-3, -2, -3]} intensity={0.3} color="#f093fb" />
-              <RobotModel />
-              <OrbitingParticles />
-              <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={0.3} />
-            </Suspense>
-          </Canvas>
-        </motion.div>
 
         {/* Welcome */}
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ background: 'linear-gradient(135deg, rgba(102,126,234,0.15), rgba(118,75,162,0.15))', backdropFilter: 'blur(30px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 'clamp(16px, 3vw, 28px)', padding: 'clamp(20px, 4vw, 40px)', marginBottom: 'clamp(20px, 3vw, 40px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
