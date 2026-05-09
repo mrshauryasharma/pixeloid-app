@@ -6,7 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { User } from 'firebase/auth';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { SmallOrb, FloatingCubes, Particles3D } from '@/components/3d/OrbModel';
+import { RobotModel, OrbitingParticles } from '@/components/3d/RobotModel';
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -39,15 +39,15 @@ export default function Dashboard() {
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', padding: 'clamp(20px, 4vw, 40px)' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* 3D Header */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ position: 'relative', height: '200px', marginBottom: '30px', borderRadius: '24px', overflow: 'hidden', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <Canvas camera={{ position: [0, 0, 6], fov: 50 }}>
+        {/* 3D Robot Header */}
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} style={{ position: 'relative', height: '220px', marginBottom: '30px', borderRadius: '24px', overflow: 'hidden', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <Canvas camera={{ position: [0, 1.5, 8], fov: 50 }}>
             <Suspense fallback={null}>
               <ambientLight intensity={0.4} />
-              <directionalLight position={[5, 5, 5]} intensity={0.8} />
-              <SmallOrb />
-              <FloatingCubes />
-              <Particles3D />
+              <directionalLight position={[5, 5, 5]} intensity={0.6} />
+              <pointLight position={[-3, -2, -3]} intensity={0.3} color="#f093fb" />
+              <RobotModel />
+              <OrbitingParticles />
               <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={0.3} />
             </Suspense>
           </Canvas>
@@ -72,7 +72,11 @@ export default function Dashboard() {
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'clamp(12px, 2vw, 24px)', marginBottom: 'clamp(20px, 3vw, 40px)' }}>
-          {[ { icon: '💬', title: 'Total Chats', value: totalChats, color: '#667eea', gradient: 'linear-gradient(135deg, rgba(102,126,234,0.2), rgba(102,126,234,0.05))' }, { icon: '⭐', title: 'Current Plan', value: userPlan.charAt(0).toUpperCase() + userPlan.slice(1), subtitle: currentPlan.chats, color: '#f093fb', gradient: 'linear-gradient(135deg, rgba(240,147,251,0.2), rgba(240,147,251,0.05))' }, { icon: '🎯', title: 'Credits Left', value: userPlan === 'yearly' ? '∞' : userCredits, subtitle: userPlan === 'yearly' ? 'Unlimited' : 'Resets daily', color: userCredits <= 5 ? '#f5576c' : '#4facfe', gradient: userCredits <= 5 ? 'linear-gradient(135deg, rgba(245,87,108,0.2), rgba(245,87,108,0.05))' : 'linear-gradient(135deg, rgba(79,172,254,0.2), rgba(79,172,254,0.05))' } ].map((stat, index) => (
+          {[ 
+            { icon: '💬', title: 'Total Chats', value: totalChats, color: '#667eea', gradient: 'linear-gradient(135deg, rgba(102,126,234,0.2), rgba(102,126,234,0.05))' }, 
+            { icon: '⭐', title: 'Current Plan', value: userPlan.charAt(0).toUpperCase() + userPlan.slice(1), subtitle: currentPlan.chats, color: '#f093fb', gradient: 'linear-gradient(135deg, rgba(240,147,251,0.2), rgba(240,147,251,0.05))' }, 
+            { icon: '🎯', title: 'Credits Left', value: userPlan === 'yearly' ? '∞' : userCredits, subtitle: userPlan === 'yearly' ? 'Unlimited' : 'Resets daily', color: userCredits <= 5 ? '#f5576c' : '#4facfe', gradient: userCredits <= 5 ? 'linear-gradient(135deg, rgba(245,87,108,0.2), rgba(245,87,108,0.05))' : 'linear-gradient(135deg, rgba(79,172,254,0.2), rgba(79,172,254,0.05))' } 
+          ].map((stat, index) => (
             <motion.div key={index} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + index * 0.1 }} whileHover={{ y: -6 }} style={{ background: stat.gradient, backdropFilter: 'blur(20px)', border: `1px solid ${stat.color}20`, borderRadius: 'clamp(16px, 3vw, 24px)', padding: 'clamp(20px, 3vw, 32px)', transition: 'all 0.3s', cursor: 'default', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: '-20px', right: '-20px', fontSize: 'clamp(60px, 10vw, 100px)', opacity: 0.05, color: stat.color }}>{stat.icon}</div>
               <div style={{ fontSize: 'clamp(30px, 5vw, 40px)', marginBottom: '12px' }}>{stat.icon}</div>
@@ -88,7 +92,10 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 'clamp(16px, 3vw, 24px)', padding: 'clamp(20px, 3vw, 36px)' }}>
             <h2 style={{ fontSize: 'clamp(22px, 3vw, 28px)', fontWeight: '700', color: 'white', marginBottom: 'clamp(16px, 2vw, 28px)' }}>⚡ Quick Actions</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'clamp(10px, 1.5vw, 16px)' }}>
-              {[ { icon: '🤖', label: 'AI Chat', href: '/chat', color: '#667eea' }, { icon: '💎', label: 'Upgrade', href: '/pricing', color: '#f093fb' } ].map((action, i) => (
+              {[ 
+                { icon: '🤖', label: 'AI Chat', href: '/chat', color: '#667eea' }, 
+                { icon: '💎', label: 'Upgrade', href: '/pricing', color: '#f093fb' } 
+              ].map((action, i) => (
                 <motion.a key={i} href={action.href} whileHover={{ scale: 1.03 }} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${action.color}30`, borderRadius: 'clamp(12px, 2vw, 16px)', padding: 'clamp(16px, 2vw, 24px)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', transition: 'all 0.3s' }}>
                   <span style={{ fontSize: 'clamp(24px, 4vw, 32px)', flexShrink: 0 }}>{action.icon}</span>
                   <p style={{ color: 'white', fontWeight: '600', fontSize: 'clamp(13px, 2vw, 16px)', margin: 0 }}>{action.label}</p>
