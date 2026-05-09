@@ -33,6 +33,8 @@ export default function Chat() {
   const [currentChatId, setCurrentChatId] = useState<string>('');
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatLoadedRef = useRef(false);
@@ -48,7 +50,7 @@ export default function Chat() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
-        setMessages([{ role: 'assistant', content: '👋 Please login to use AI chat! Click Login/Sign Up above.', timestamp: new Date() }]);
+        setMessages([{ role: 'assistant', content: '👋 Please login to use AI chat!', timestamp: new Date() }]);
         setCredits(0);
         setChatSessions([]);
         chatLoadedRef.current = false;
@@ -102,6 +104,46 @@ export default function Chat() {
       });
       setMessages(msgs.length > 0 ? msgs : [{ role: 'assistant', content: 'Start chatting! ✨', timestamp: new Date() }]);
     });
+  };
+
+  const startEdit = (msg: Message) => {
+    setEditingMsgId(msg.id || null);
+    setEditText(msg.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingMsgId(null);
+    setEditText('');
+  };
+
+  const saveEdit = async () => {
+    if (!editText.trim() || !editingMsgId || !currentChatId || !user) return;
+    
+    try {
+      const msgRef = doc(db, 'users', user.uid, 'chats', currentChatId, 'messages', editingMsgId);
+      await updateDoc(msgRef, { content: editText.trim() });
+      
+      // Resend AI response
+      setLoading(true);
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: editText.trim(), userId: user.uid, email: user.email, chatId: currentChatId }),
+      });
+      const data = await res.json();
+      
+      if (data.reply) {
+        const messagesRef = collection(db, 'users', user.uid, 'chats', currentChatId, 'messages');
+        await addDoc(messagesRef, { role: 'assistant', content: data.reply, timestamp: Timestamp.now() });
+        if (data.remaining !== undefined) setCredits(data.remaining);
+      }
+    } catch (error) {
+      console.error('Edit error:', error);
+    } finally {
+      setEditingMsgId(null);
+      setEditText('');
+      setLoading(false);
+    }
   };
 
   const deleteChat = async (chatId: string, e: React.MouseEvent) => {
@@ -161,7 +203,7 @@ export default function Chat() {
     setInput('');
     setLoading(true);
     try {
-      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: input.trim(), userId: user.uid, email: user.email }) });
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: input.trim(), userId: user.uid, email: user.email, chatId: currentChatId }) });
       const data = await res.json();
       if (data.error === 'limit_reached') {
         const reply = `⚠️ ${data.reply}\n\n💎 Upgrade: Weekly ₹15 | Monthly ₹60 | Yearly ₹499`;
@@ -227,7 +269,7 @@ export default function Chat() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', minWidth: 0, position: 'relative' }}>
         
         {/* 3D Robot Background */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', opacity: 0.12 }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', opacity: 0.1 }}>
           <Canvas camera={{ position: [0, 1, 12], fov: 55 }}>
             <Suspense fallback={null}>
               <ambientLight intensity={0.3} />
@@ -252,10 +294,32 @@ export default function Chat() {
         </div>
 
         {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px 14px' : '20px 60px', display: 'flex', flexDirection: 'column', gap: '14px', WebkitOverflowScrolling: 'touch', position: 'relative', zIndex: 1 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px 14px' : '20px 60px', display: 'flex', flexDirection: 'column', gap: '10px', WebkitOverflowScrolling: 'touch', position: 'relative', zIndex: 1 }}>
           {messages.map((msg, index) => (
-            <motion.div key={index} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-              <div style={{ maxWidth: isMobile ? '90%' : '65%', padding: isMobile ? '10px 14px' : '14px 18px', borderRadius: '18px', color: 'white', fontSize: isMobile ? '13px' : '14.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: msg.role === 'user' ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.06)', border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.06)' : 'none', backdropFilter: 'blur(10px)' }}>{msg.content}</div>
+            <motion.div key={index} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: '6px' }}>
+              <div style={{ maxWidth: isMobile ? '85%' : '65%', position: 'relative' }}>
+                {editingMsgId === msg.id ? (
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                      style={{ flex: 1, padding: '10px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', border: '1px solid #667eea', color: 'white', fontSize: '14px', outline: 'none' }}
+                      autoFocus
+                    />
+                    <button onClick={saveEdit} style={{ background: '#667eea', border: 'none', color: 'white', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>✓</button>
+                    <button onClick={cancelEdit} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>✕</button>
+                  </div>
+                ) : (
+                  <div style={{ padding: isMobile ? '10px 14px' : '14px 18px', borderRadius: '18px', color: 'white', fontSize: isMobile ? '13px' : '14.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: msg.role === 'user' ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.06)', border: msg.role === 'assistant' ? '1px solid rgba(255,255,255,0.06)' : 'none', backdropFilter: 'blur(10px)' }}>
+                    {msg.content}
+                  </div>
+                )}
+              </div>
+              {msg.role === 'user' && !editingMsgId && (
+                <button onClick={() => startEdit(msg)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '11px', padding: '4px', flexShrink: 0 }} title="Edit message">✏️</button>
+              )}
             </motion.div>
           ))}
           {loading && <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', padding: '8px' }}>● Thinking...</div>}
