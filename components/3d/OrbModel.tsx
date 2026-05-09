@@ -5,7 +5,7 @@ import { Float, MeshDistortMaterial } from '@react-three/drei';
 import * as THREE from 'three';
 
 export function OrbModel() {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Mesh>(null!);
 
   useFrame((state) => {
     if (meshRef.current) {
@@ -33,7 +33,7 @@ export function OrbModel() {
 }
 
 export function SmallOrb() {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Mesh>(null!);
 
   useFrame((state) => {
     if (meshRef.current) {
@@ -60,7 +60,7 @@ export function SmallOrb() {
 }
 
 export function TorusModel() {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Mesh>(null!);
 
   useFrame((state) => {
     if (meshRef.current) {
@@ -95,7 +95,7 @@ export function Particles3D() {
     positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
   }
 
-  const ref = useRef<THREE.Points>(null);
+  const ref = useRef<THREE.Points>(null!);
 
   useFrame((state) => {
     if (ref.current) {
@@ -126,7 +126,7 @@ export function Particles3D() {
 }
 
 export function AISphere() {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Mesh>(null!);
 
   useFrame((state) => {
     if (meshRef.current) {
