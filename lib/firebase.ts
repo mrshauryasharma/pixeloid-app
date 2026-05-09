@@ -3,20 +3,15 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyB25m2Y_BZTxwzickLgdUViBKCJQPo15Rs",
+  authDomain: "pixeloid-pro.firebaseapp.com",
+  projectId: "pixeloid-pro",
+  storageBucket: "pixeloid-pro.firebasestorage.app",
+  messagingSenderId: "169676409543",
+  appId: "1:169676409543:web:a28440b9e1b0b6a9bdcce2"
 };
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
-
-googleProvider.setCustomParameters({
-  prompt: 'select_account',
-});
-
 export const db = getFirestore(app);
