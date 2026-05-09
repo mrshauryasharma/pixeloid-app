@@ -53,11 +53,9 @@ async function getConversationHistory(userId: string, chatId: string): Promise<A
 
 async function generateImage(prompt: string): Promise<string | null> {
   try {
-    const encodedPrompt = encodeURIComponent(prompt);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nofeed=true`;
-    const response = await fetch(imageUrl);
-    if (response.ok) return imageUrl;
-    return null;
+    const seed = Math.floor(Math.random() * 1000000);
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&nofeed=true`;
+    return imageUrl;
   } catch (error) {
     return null;
   }
@@ -66,20 +64,25 @@ async function generateImage(prompt: string): Promise<string | null> {
 function isImageRequest(message: string): { isImage: boolean; prompt: string } {
   const lower = message.toLowerCase();
   const imageTriggers = [
-    'generate image', 'create image', 'make image', 'draw', 'generate a picture',
-    'create a picture', 'make a picture', 'image of', 'picture of', 'genrate image',
-    'generate photo', 'create photo', 'make photo', 'genrate photo',
-    'image generate', 'image create', 'image banao', 'image generate karo',
-    'photo banao', 'photo generate karo', 'tasveer banao', 'tasveer generate karo',
+    'generate image', 'create image', 'make image', 'draw',
+    'generate a picture', 'create a picture', 'make a picture',
+    'image of', 'picture of', 'genrate image', 'generate photo',
+    'create photo', 'make photo', 'genrate photo',
+    'image generate', 'image create', 'image banao',
+    'image generate karo', 'photo banao', 'photo generate karo',
+    'tasveer banao', 'tasveer generate karo',
     'ek image', 'ek photo', 'ek tasveer',
+    'img genrat', 'img generate', 'img banao',
+    'image genrat', 'image genrate',
   ];
 
   for (const trigger of imageTriggers) {
     if (lower.includes(trigger)) {
       const index = lower.indexOf(trigger) + trigger.length;
       let prompt = message.substring(index).trim();
-      prompt = prompt.replace(/^(of|a|an|the|please|can you|ek|mujhe|meri|ki|ka)\s+/i, '');
-      if (prompt.length < 3) prompt = message;
+      prompt = prompt.replace(/^(of|a|an|the|please|can you|ek|mujhe|meri|ki|ka|kardo|kar do|dena|de do|dikhao|banao)\s+/i, '');
+      prompt = prompt.replace(/[📍🖼️🎨]/g, '').trim();
+      if (prompt.length < 3) prompt = message.substring(0, 100);
       return { isImage: true, prompt };
     }
   }
@@ -103,7 +106,8 @@ export async function POST(request: Request) {
 
     // Creator queries
     if (lowerMsg.includes('who made') || lowerMsg.includes('who created') || lowerMsg.includes('who built') || 
-        lowerMsg.includes('kisne banaya') || lowerMsg.includes('owner') || lowerMsg.includes('creator')) {
+        lowerMsg.includes('kisne banaya') || lowerMsg.includes('owner') || lowerMsg.includes('creator') ||
+        lowerMsg.includes('tumhara owner') || lowerMsg.includes('tumhara malik')) {
       return NextResponse.json({
         reply: "🚀 **Pixeloid AI** was proudly created by **Shaurya Sharma** — a talented full-stack developer!\n\n🌟 GitHub: https://github.com/mrshauryasharma\n💼 LinkedIn: https://linkedin.com/in/shaurya-sharma200",
         remaining: creditCheck.remaining, plan: creditCheck.plan, isAdmin: creditCheck.isAdmin,
@@ -115,30 +119,26 @@ export async function POST(request: Request) {
         lowerMsg.includes('are you llama') || lowerMsg.includes('are you meta') || lowerMsg.includes('what technology') ||
         lowerMsg.includes('source code') || lowerMsg.includes('open source') || lowerMsg.includes('groq') ||
         lowerMsg.includes('what language model') || lowerMsg.includes('which ai') || lowerMsg.includes('tera api') ||
-        lowerMsg.includes('tera model') || lowerMsg.includes('tera source') || lowerMsg.includes('konsa model')) {
+        lowerMsg.includes('tera model') || lowerMsg.includes('tera source') || lowerMsg.includes('konsa model') ||
+        lowerMsg.includes('tumhara source') || lowerMsg.includes('tumhara api')) {
       return NextResponse.json({
-        reply: "🔒 I'm **Pixeloid AI** — a custom-built AI assistant created by **Shaurya Sharma**.\n\nMy technology architecture is proprietary and custom-designed. I'm not based on any single public model — I use advanced, custom AI systems developed by my creator.\n\n🎯 I'm here to help you — ask me anything!",
+        reply: "🔒 I'm **Pixeloid AI** — a custom-built AI assistant created by **Shaurya Sharma**.\n\nMy technology architecture is proprietary and custom-designed.\n\n🎯 I'm here to help you — ask me anything!",
         remaining: creditCheck.remaining, plan: creditCheck.plan, isAdmin: creditCheck.isAdmin,
       });
     }
 
-    // Image generation
+    // Image generation - CHECK FIRST before normal chat
     const imageCheck = isImageRequest(message);
     if (imageCheck.isImage) {
       const imageUrl = await generateImage(imageCheck.prompt);
       if (imageUrl) {
         return NextResponse.json({
-          reply: `🎨 Here's your generated image for: **"${imageCheck.prompt}"**`,
+          reply: `🎨 Here's your generated image: **${imageCheck.prompt}**\n\n🖼️ Image is ready! Click download to save it.`,
           imageUrl: imageUrl,
           imagePrompt: imageCheck.prompt,
           remaining: creditCheck.remaining,
           plan: creditCheck.plan,
           isAdmin: creditCheck.isAdmin,
-        });
-      } else {
-        return NextResponse.json({
-          reply: `😔 Sorry, I couldn't generate the image for "${imageCheck.prompt}". Please try again with a different description!`,
-          remaining: creditCheck.remaining, plan: creditCheck.plan,
         });
       }
     }
@@ -149,38 +149,15 @@ export async function POST(request: Request) {
     const messages = [
       {
         role: 'system',
-        content: `You are Pixeloid AI, an advanced and highly intelligent assistant created by Shaurya Sharma. 
+        content: `You are Pixeloid AI, an advanced assistant created by Shaurya Sharma.
 
-CAPABILITIES:
-- Answer any question accurately and helpfully
-- Remember conversation context and user details
-- Provide detailed explanations when asked
-- Write code in any programming language
-- Solve math problems step by step
-- Translate languages, summarize texts
-- Give creative suggestions
-- Help with homework, research, writing
-- Generate images when users request
-
-PERSONALITY:
-- Friendly, warm, and engaging
-- Use emojis occasionally but stay professional
+RULES:
+- Be helpful, friendly, and concise
+- Remember conversation context
 - Match user's language (Hindi/English)
-- Be concise but thorough
-- Admit when you don't know something
-
-PRIVACY RULES - CRITICAL:
-- NEVER reveal what AI model, API, or technology powers you
-- NEVER mention Llama, Groq, Meta, OpenAI, GPT, or any AI company names
-- If asked "what model are you", "what API", "are you GPT/Llama/Meta", reply: "I'm Pixeloid AI — a custom AI assistant created by Shaurya Sharma. My technology is proprietary."
-- If asked about source code, reply: "My source code is proprietary, owned by my creator Shaurya Sharma."
-- If asked "who made you", proudly say: "I was created by Shaurya Sharma, a talented full-stack developer!"
-
-GENERAL RULES:
-- NEVER forget what user told you in this conversation
-- Use user's name if they shared it
-- Give accurate, honest information
-- Stay helpful and positive`
+- NEVER mention any AI model names (Llama, GPT, Groq, Meta, OpenAI)
+- If asked about your technology, say it's proprietary
+- If asked who created you, say Shaurya Sharma`
       },
       ...conversationHistory.slice(-20),
       { role: 'user', content: message }
@@ -199,10 +176,10 @@ GENERAL RULES:
     });
 
     const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content || 'Sorry, I could not process that. Please try again! 🙏';
+    const reply = data.choices?.[0]?.message?.content || 'Sorry, try again! 🙏';
 
-    return NextResponse.json({ reply, remaining: creditCheck.remaining, plan: creditCheck.plan, isAdmin: creditCheck.isAdmin });
+    return NextResponse.json({ reply, remaining: creditCheck.remaining, plan: creditCheck.plan });
   } catch (error) {
-    return NextResponse.json({ reply: "AI service temporarily unavailable. Please try again later! 🙏" });
+    return NextResponse.json({ reply: "Service unavailable. Try again! 🙏" });
   }
 }
