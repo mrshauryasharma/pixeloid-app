@@ -7,7 +7,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { User } from 'firebase/auth';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { RobotModel, OrbitingParticles, Particles3D } from '@/components/3d/RobotModel';
+import { RobotModel, OrbitingParticles } from '@/components/3d/RobotModel';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -28,7 +28,6 @@ export default function Home() {
             <pointLight position={[-5, -3, -5]} intensity={0.4} color="#f093fb" />
             <RobotModel />
             <OrbitingParticles />
-            <Particles3D />
             <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={0.3} maxPolarAngle={Math.PI / 2} minPolarAngle={Math.PI / 3} />
           </Suspense>
         </Canvas>
