@@ -49,11 +49,41 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-title" content="Pixeloid" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#667eea" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="description" content="AI-Powered Daily Life Assistant by Shaurya Sharma. Chat, generate images, and automate tasks!" />
+        <meta name="author" content="Shaurya Sharma" />
+        <meta name="keywords" content="AI, chatbot, image generator, daily assistant, Pixeloid, Shaurya Sharma" />
+        <meta name="robots" content="index, follow" />
+        <meta property="og:title" content="Pixeloid AI - Your Daily Life Assistant" />
+        <meta property="og:description" content="AI-powered assistant with chat, image generation, and smart tools. Created by Shaurya Sharma." />
+        <meta property="og:type" content="website" />
+        
+        {/* Icons */}
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
         <link rel="manifest" href="/manifest.json" />
         
+        {/* Microsoft Tiles */}
+        <meta name="msapplication-TileColor" content="#667eea" />
+        <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
+        
         <title>Pixeloid AI - Your Daily Life Assistant</title>
-        <meta name="description" content="AI-Powered Daily Life Assistant by Shaurya Sharma. Chat, Create, Automate!" />
+        
+        {/* Service Worker Registration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) { console.log('SW registered'); },
+                    function(err) { console.log('SW failed:', err); }
+                  );
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body style={{ margin: 0, padding: 0, overflowX: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#0f0c29' }}>
         {/* NAVBAR */}
@@ -238,11 +268,7 @@ function Footer({ onNameClick }: { onNameClick: () => void }) {
       width: '100%',
       flexShrink: 0,
     }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        textAlign: 'center',
-      }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
         <p style={{
           color: 'rgba(255,255,255,0.6)',
           fontSize: 'clamp(11px, 1.5vw, 13px)',
@@ -257,16 +283,10 @@ function Footer({ onNameClick }: { onNameClick: () => void }) {
           margin: 0,
         }}>
           Designed & Developed by{' '}
-          <span
-            onClick={onNameClick}
-            style={{
-              color: '#667eea',
-              fontWeight: '700',
-              textDecoration: 'underline',
-              cursor: 'pointer',
-              transition: 'color 0.3s',
-            }}
-          >
+          <span onClick={onNameClick} style={{
+            color: '#667eea', fontWeight: '700', textDecoration: 'underline',
+            cursor: 'pointer', transition: 'color 0.3s',
+          }}>
             Shaurya Sharma
           </span>
         </p>
@@ -284,15 +304,9 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
       exit={{ opacity: 0 }}
       onClick={onClose}
       style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.8)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
+        backdropFilter: 'blur(8px)', zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
       }}
     >
       <motion.div
@@ -303,142 +317,49 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'linear-gradient(145deg, #1a1040, #0f0c29)',
-          border: '1px solid rgba(102,126,234,0.4)',
-          borderRadius: '24px',
-          padding: 'clamp(24px, 4vw, 40px)',
-          maxWidth: '400px',
-          width: '100%',
-          textAlign: 'center',
-          boxShadow: '0 20px 60px rgba(102,126,234,0.3)',
-          position: 'relative',
+          border: '1px solid rgba(102,126,234,0.4)', borderRadius: '24px',
+          padding: 'clamp(24px, 4vw, 40px)', maxWidth: '400px', width: '100%',
+          textAlign: 'center', boxShadow: '0 20px 60px rgba(102,126,234,0.3)', position: 'relative',
         }}
       >
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '16px',
-            background: 'rgba(255,255,255,0.1)',
-            border: 'none',
-            color: 'white',
-            fontSize: '20px',
-            cursor: 'pointer',
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          ✕
-        </button>
+        <button onClick={onClose} style={{
+          position: 'absolute', top: '12px', right: '16px',
+          background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white',
+          fontSize: '20px', cursor: 'pointer', width: '32px', height: '32px',
+          borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>✕</button>
 
         <div style={{
-          width: '120px',
-          height: '154px',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          margin: '0 auto 16px',
-          border: '3px solid rgba(102,126,234,0.5)',
+          width: '120px', height: '154px', borderRadius: '16px', overflow: 'hidden',
+          margin: '0 auto 16px', border: '3px solid rgba(102,126,234,0.5)',
           boxShadow: '0 8px 24px rgba(102,126,234,0.3)',
         }}>
-          <img
-            src="/shaurya.jpg"
-            alt="Shaurya Sharma"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-            }}
-          />
+          <img src="/shaurya.jpg" alt="Shaurya Sharma" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
-        <h2 style={{
-          color: 'white',
-          fontSize: 'clamp(20px, 3vw, 26px)',
-          fontWeight: '800',
-          margin: '0 0 4px 0',
-        }}>
-          Shaurya Sharma
-        </h2>
-        <p style={{
-          color: '#667eea',
-          fontSize: '14px',
-          fontWeight: '600',
-          margin: '0 0 20px 0',
-        }}>
-          Full Stack Developer
-        </p>
+        <h2 style={{ color: 'white', fontSize: 'clamp(20px, 3vw, 26px)', fontWeight: '800', margin: '0 0 4px 0' }}>Shaurya Sharma</h2>
+        <p style={{ color: '#667eea', fontSize: '14px', fontWeight: '600', margin: '0 0 20px 0' }}>Full Stack Developer</p>
 
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '8px',
-          justifyContent: 'center',
-          marginBottom: '24px',
-        }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '24px' }}>
           {['UI / UX', 'Frontend Development', 'HTML', 'CSS', 'JavaScript', 'PHP', 'Java'].map((skill, i) => (
             <span key={i} style={{
-              background: 'rgba(102,126,234,0.15)',
-              border: '1px solid rgba(102,126,234,0.25)',
-              color: '#667eea',
-              padding: '4px 12px',
-              borderRadius: '20px',
-              fontSize: '11px',
-              fontWeight: '600',
-            }}>
-              {skill}
-            </span>
+              background: 'rgba(102,126,234,0.15)', border: '1px solid rgba(102,126,234,0.25)',
+              color: '#667eea', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
+            }}>{skill}</span>
           ))}
         </div>
 
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          justifyContent: 'center',
-        }}>
-          <a
-            href="https://www.linkedin.com/in/shaurya-sharma200"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              background: 'linear-gradient(135deg, #0077B5, #00A0DC)',
-              color: 'white',
-              padding: '10px 20px',
-              borderRadius: '12px',
-              textDecoration: 'none',
-              fontSize: '14px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'transform 0.3s',
-            }}
-          >
-            🔗 LinkedIn
-          </a>
-          <a
-            href="https://github.com/mrshauryasharma"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              background: 'linear-gradient(135deg, #333, #555)',
-              color: 'white',
-              padding: '10px 20px',
-              borderRadius: '12px',
-              textDecoration: 'none',
-              fontSize: '14px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'transform 0.3s',
-            }}
-          >
-            💻 GitHub
-          </a>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <a href="https://www.linkedin.com/in/shaurya-sharma200" target="_blank" rel="noopener noreferrer" style={{
+            background: 'linear-gradient(135deg, #0077B5, #00A0DC)', color: 'white',
+            padding: '10px 20px', borderRadius: '12px', textDecoration: 'none',
+            fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px',
+          }}>🔗 LinkedIn</a>
+          <a href="https://github.com/mrshauryasharma" target="_blank" rel="noopener noreferrer" style={{
+            background: 'linear-gradient(135deg, #333, #555)', color: 'white',
+            padding: '10px 20px', borderRadius: '12px', textDecoration: 'none',
+            fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px',
+          }}>💻 GitHub</a>
         </div>
       </motion.div>
     </motion.div>
