@@ -15,3 +15,11 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);
+
+// ADD THIS - Custom redirect for mobile
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+  redirect_uri: window.location.origin + '/dashboard',
+});
+
+export const db = getFirestore(app);

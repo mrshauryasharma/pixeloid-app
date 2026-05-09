@@ -2,7 +2,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, getRedirectResult } from 'firebase/auth';
 import { User } from 'firebase/auth';
 
 export default function Dashboard() {
@@ -12,9 +12,20 @@ export default function Dashboard() {
   const [userCredits, setUserCredits] = useState(20);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      if (user) fetchCredits(user.uid);
+    // Handle redirect result (for mobile Google login)
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        setUser(result.user);
+        fetchCredits(result.user.uid);
+      }
+    }).catch((error) => {
+      console.error('Redirect error:', error);
+    });
+
+    // Listen for auth state changes
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) fetchCredits(currentUser.uid);
     });
     return () => unsubscribe();
   }, []);

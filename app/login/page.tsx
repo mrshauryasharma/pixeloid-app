@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
 export default function Login() {
@@ -23,11 +23,22 @@ export default function Login() {
   };
 
   const handleGoogleLogin = async () => {
+    setError('');
     try {
-      await signInWithPopup(auth, googleProvider);
-      router.push('/dashboard');
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result.user) {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
-      setError(err.message);
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/popup-blocked') {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (e: any) {
+          setError('Login failed. Please try again.');
+        }
+      } else {
+        setError(err.message);
+      }
     }
   };
 
