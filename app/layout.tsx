@@ -5,12 +5,14 @@ import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { User } from "firebase/auth";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showPortfolio, setShowPortfolio] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -115,8 +117,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
 
-        {/* FOOTER - Har Page Pe Dikhega */}
-        <Footer />
+        {/* FOOTER */}
+        <Footer onNameClick={() => setShowPortfolio(true)} />
+
+        {/* PORTFOLIO MODAL */}
+        <AnimatePresence>
+          {showPortfolio && (
+            <PortfolioModal onClose={() => setShowPortfolio(false)} />
+          )}
+        </AnimatePresence>
       </body>
     </html>
   );
@@ -206,8 +215,8 @@ function NavLinks({ user, loading, handleLogout, closeMenu, isMobile }: {
   );
 }
 
-// Footer Component - Har Page Pe Dikhega
-function Footer() {
+// Footer Component
+function Footer({ onNameClick }: { onNameClick: () => void }) {
   return (
     <footer style={{
       background: 'linear-gradient(135deg, #0f0c29, #1a1040)',
@@ -235,15 +244,192 @@ function Footer() {
           margin: 0,
         }}>
           Designed & Developed by{' '}
-          <a href="https://github.com/mrshauryasharma" target="_blank" rel="noopener noreferrer" style={{
-            color: '#667eea',
-            fontWeight: '700',
-            textDecoration: 'none',
-          }}>
+          <span
+            onClick={onNameClick}
+            style={{
+              color: '#667eea',
+              fontWeight: '700',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              transition: 'color 0.3s',
+            }}
+          >
             Shaurya Sharma
-          </a>
+          </span>
         </p>
       </div>
     </footer>
+  );
+}
+
+// Portfolio Modal Component
+function PortfolioModal({ onClose }: { onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.8)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}
+    >
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0, y: 40 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.8, opacity: 0, y: 40 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(145deg, #1a1040, #0f0c29)',
+          border: '1px solid rgba(102,126,234,0.4)',
+          borderRadius: '24px',
+          padding: 'clamp(24px, 4vw, 40px)',
+          maxWidth: '400px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 20px 60px rgba(102,126,234,0.3)',
+          position: 'relative',
+        }}
+      >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '16px',
+            background: 'rgba(255,255,255,0.1)',
+            border: 'none',
+            color: 'white',
+            fontSize: '20px',
+            cursor: 'pointer',
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          ✕
+        </button>
+
+        {/* Avatar */}
+        <div style={{
+          width: '80px',
+          height: '80px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #667eea, #f093fb)',
+          margin: '0 auto 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '36px',
+          fontWeight: '800',
+          color: 'white',
+          border: '3px solid rgba(255,255,255,0.2)',
+        }}>
+          SS
+        </div>
+
+        {/* Name */}
+        <h2 style={{
+          color: 'white',
+          fontSize: 'clamp(20px, 3vw, 26px)',
+          fontWeight: '800',
+          margin: '0 0 4px 0',
+        }}>
+          Shaurya Sharma
+        </h2>
+        <p style={{
+          color: '#667eea',
+          fontSize: '14px',
+          fontWeight: '600',
+          margin: '0 0 20px 0',
+        }}>
+          Full Stack Developer
+        </p>
+
+        {/* Skills */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px',
+          justifyContent: 'center',
+          marginBottom: '24px',
+        }}>
+          {['UI / UX', 'Frontend Development', 'HTML', 'CSS', 'JavaScript', 'PHP', 'Laravel', 'Java'].map((skill, i) => (
+            <span key={i} style={{
+              background: 'rgba(102,126,234,0.15)',
+              border: '1px solid rgba(102,126,234,0.25)',
+              color: '#667eea',
+              padding: '4px 12px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '600',
+            }}>
+              {skill}
+            </span>
+          ))}
+        </div>
+
+        {/* Social Links */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          justifyContent: 'center',
+        }}>
+          <a
+            href="https://www.linkedin.com/in/shaurya-sharma200"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: 'linear-gradient(135deg, #0077B5, #00A0DC)',
+              color: 'white',
+              padding: '10px 20px',
+              borderRadius: '12px',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'transform 0.3s',
+            }}
+          >
+            🔗 LinkedIn
+          </a>
+          <a
+            href="https://github.com/mrshauryasharma"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: 'linear-gradient(135deg, #333, #555)',
+              color: 'white',
+              padding: '10px 20px',
+              borderRadius: '12px',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'transform 0.3s',
+            }}
+          >
+            💻 GitHub
+          </a>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
