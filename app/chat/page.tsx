@@ -13,8 +13,6 @@ type Message = {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  imageUrl?: string;
-  imagePrompt?: string;
 };
 
 type ChatSession = {
@@ -40,6 +38,7 @@ export default function Chat() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatLoadedRef = useRef(false);
+  const currentChatUnsubscribe = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -90,40 +89,29 @@ export default function Chat() {
   };
 
   const createNewChat = () => {
+    if (currentChatUnsubscribe.current) {
+      currentChatUnsubscribe.current();
+    }
     setCurrentChatId('');
-    setMessages([{ role: 'assistant', content: `Hello ${user?.displayName || user?.email?.split('@')[0] || 'User'}! How can I help you today? ✨\n\n💡 Try: "Generate image of lion"`, timestamp: new Date() }]);
+    setMessages([{ role: 'assistant', content: `Hello ${user?.displayName || user?.email?.split('@')[0] || 'User'}! How can I help you today? ✨`, timestamp: new Date() }]);
   };
 
   const loadChat = (chatId: string) => {
+    if (currentChatUnsubscribe.current) {
+      currentChatUnsubscribe.current();
+    }
     setCurrentChatId(chatId);
     const messagesRef = collection(db, 'users', user!.uid, 'chats', chatId, 'messages');
     const q = query(messagesRef, orderBy('timestamp'));
-    return onSnapshot(q, (snapshot) => {
+    const unsub = onSnapshot(q, (snapshot) => {
       const msgs: Message[] = [];
       snapshot.forEach((document) => {
         const data = document.data();
-        msgs.push({
-          id: document.id, role: data.role, content: data.content,
-          timestamp: data.timestamp?.toDate() || new Date(),
-          imageUrl: data.imageUrl, imagePrompt: data.imagePrompt,
-        });
+        msgs.push({ id: document.id, role: data.role, content: data.content, timestamp: data.timestamp?.toDate() || new Date() });
       });
       setMessages(msgs.length > 0 ? msgs : [{ role: 'assistant', content: 'Start chatting! ✨', timestamp: new Date() }]);
     });
-  };
-
-  const downloadImage = async (imageUrl: string, prompt: string) => {
-    try {
-      const a = document.createElement('a');
-      a.href = imageUrl;
-      a.download = `${prompt.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}.png`;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (error) {
-      window.open(imageUrl, '_blank');
-    }
+    currentChatUnsubscribe.current = unsub;
   };
 
   const startEdit = (msg: Message) => {
@@ -132,10 +120,7 @@ export default function Chat() {
     setEditText(msg.content);
   };
 
-  const cancelEdit = () => {
-    setEditingMsgId(null);
-    setEditText('');
-  };
+  const cancelEdit = () => { setEditingMsgId(null); setEditText(''); };
 
   const saveEdit = async () => {
     if (!editText.trim() || !editingMsgId || !currentChatId || !user) return;
@@ -144,9 +129,7 @@ export default function Chat() {
       await updateDoc(msgRef, { content: editText.trim() });
       setEditingMsgId(null);
       setEditText('');
-    } catch (error) {
-      console.error('Edit error:', error);
-    }
+    } catch (error) {}
   };
 
   const deleteChat = async (chatId: string, e: React.MouseEvent) => {
@@ -185,38 +168,53 @@ export default function Chat() {
     if (!input.trim()) return;
     if (!user) { alert('Please login!'); return; }
     
-    const userMsg: Message = { role: 'user', content: input.trim(), timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
     const msgText = input.trim();
+    const userMsg: Message = { role: 'user', content: msgText, timestamp: new Date() };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
     
     try {
+      // Save user message to Firestore
+      if (currentChatId) {
+        const messagesRef = collection(db, 'users', user.uid, 'chats', currentChatId, 'messages');
+        await addDoc(messagesRef, { role: 'user', content: msgText, timestamp: Timestamp.now() });
+        await updateDoc(doc(db, 'users', user.uid, 'chats', currentChatId), { lastMessage: msgText.substring(0, 100) });
+      }
+
       const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msgText, userId: user.uid, email: user.email, chatId: currentChatId }),
       });
       const data = await res.json();
       
       if (data.error === 'limit_reached') {
-        setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${data.reply}`, timestamp: new Date() }]);
+        const reply = `⚠️ ${data.reply}\n\n💎 Upgrade: Weekly ₹15 | Monthly ₹60 | Yearly ₹499`;
+        setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
+        if (currentChatId) {
+          const messagesRef = collection(db, 'users', user.uid, 'chats', currentChatId, 'messages');
+          await addDoc(messagesRef, { role: 'assistant', content: reply, timestamp: Timestamp.now() });
+        }
       } else {
-        const aiMsg: Message = {
-          role: 'assistant',
-          content: data.reply,
-          timestamp: new Date(),
-          imageUrl: data.imageUrl || undefined,
-          imagePrompt: data.imagePrompt || undefined,
-        };
-        setMessages(prev => [...prev, aiMsg]);
+        setMessages(prev => [...prev, { role: 'assistant', content: data.reply, timestamp: new Date() }]);
+        if (!currentChatId && data.reply) {
+          const chatRef = await addDoc(collection(db, 'users', user.uid, 'chats'), {
+            title: msgText.substring(0, 50), lastMessage: data.reply.substring(0, 100), createdAt: Timestamp.now(),
+          });
+          setCurrentChatId(chatRef.id);
+          const messagesRef = collection(db, 'users', user.uid, 'chats', chatRef.id, 'messages');
+          await addDoc(messagesRef, { role: 'user', content: msgText, timestamp: Timestamp.now() });
+          await addDoc(messagesRef, { role: 'assistant', content: data.reply, timestamp: Timestamp.now() });
+        } else if (currentChatId) {
+          const messagesRef = collection(db, 'users', user.uid, 'chats', currentChatId, 'messages');
+          await addDoc(messagesRef, { role: 'assistant', content: data.reply, timestamp: Timestamp.now() });
+          await updateDoc(doc(db, 'users', user.uid, 'chats', currentChatId), { lastMessage: data.reply.substring(0, 100) });
+        }
         if (data.remaining !== undefined) setCredits(data.remaining);
       }
     } catch (error) {
       setMessages(prev => [...prev, { role: 'assistant', content: '❌ Error. Try again.', timestamp: new Date() }]);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -233,7 +231,7 @@ export default function Chat() {
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
             {chatSessions.length === 0 ? <div style={{ textAlign: 'center', padding: 40 }}><p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>No chats</p></div> : chatSessions.map(chat => (
-              <div key={chat.id} onClick={() => { loadChat(chat.id); if (isMobile) setSidebarOpen(false); }} style={{ padding: '10px 12px', borderRadius: 10, cursor: 'pointer', marginBottom: 4, background: currentChatId === chat.id ? 'rgba(102,126,234,0.15)' : 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={chat.id} onClick={() => loadChat(chat.id)} style={{ padding: '10px 12px', borderRadius: 10, cursor: 'pointer', marginBottom: 4, background: currentChatId === chat.id ? 'rgba(102,126,234,0.15)' : 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ color: 'white', fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chat.title || 'New Chat'}</p>
                   <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: 0 }}>{chat.lastMessage || ''}</p>
@@ -283,20 +281,9 @@ export default function Chat() {
               ) : (
                 <div style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 6 }}>
                   <div style={{ maxWidth: isMobile ? '90%' : '70%' }}>
-                    {msg.imageUrl && (
-                      <div style={{ marginBottom: 8, background: 'rgba(0,0,0,0.3)', borderRadius: 16, padding: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <img src={msg.imageUrl} alt={msg.imagePrompt || 'Generated'} style={{ width: '100%', borderRadius: 12 }} />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 8 }}>
-                          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>🎨 {msg.imagePrompt || ''}</span>
-                          <button onClick={() => downloadImage(msg.imageUrl!, msg.imagePrompt || 'image')} style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', border: 'none', color: 'white', padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>⬇️ Download</button>
-                        </div>
-                      </div>
-                    )}
                     <div style={{ padding: isMobile ? '10px 14px' : '14px 18px', borderRadius: 18, color: 'white', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', background: msg.role === 'user' ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.06)' }}>{msg.content}</div>
                   </div>
-                  {msg.role === 'user' && msg.id && (
-                    <button onClick={() => startEdit(msg)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 12, padding: '4px 8px', borderRadius: 6, flexShrink: 0 }}>✏️</button>
-                  )}
+                  {msg.role === 'user' && msg.id && <button onClick={() => startEdit(msg)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 12, padding: '4px 8px', borderRadius: 6, flexShrink: 0 }}>✏️</button>}
                 </div>
               )}
             </motion.div>
@@ -307,7 +294,7 @@ export default function Chat() {
 
         <div style={{ padding: isMobile ? '10px 12px' : '14px 60px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0, position: 'relative', zIndex: 2, background: 'rgba(15,12,41,0.9)' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: 24, padding: '4px 6px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } }} placeholder={user ? "Message" : "Login to chat"} disabled={!user} style={{ flex: 1, padding: '12px 8px', background: 'transparent', border: 'none', color: 'white', fontSize: 14, outline: 'none', opacity: user ? 1 : 0.5 }} />
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } }} placeholder="Message Pixeloid AI..." disabled={!user} style={{ flex: 1, padding: '12px 8px', background: 'transparent', border: 'none', color: 'white', fontSize: 14, outline: 'none', opacity: user ? 1 : 0.5 }} />
             <button onClick={sendMessage} disabled={!user || !input.trim() || loading} style={{ background: input.trim() ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255,255,255,0.08)', border: 'none', color: 'white', borderRadius: '50%', width: 38, height: 38, cursor: input.trim() ? 'pointer' : 'not-allowed', fontSize: 16, flexShrink: 0, opacity: input.trim() ? 1 : 0.4 }}>↑</button>
           </div>
         </div>
