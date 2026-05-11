@@ -9,16 +9,35 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
+    
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please login instead.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Invalid email address.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password is too weak. Use at least 6 characters.');
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -97,7 +116,7 @@ export default function Signup() {
         
         <motion.button
           onClick={handleGoogleSignup}
-          whileHover={{ scale: 1.02, boxShadow: '0 8px 32px rgba(102,126,234,0.3)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           style={{
             width: '100%',
@@ -122,10 +141,7 @@ export default function Signup() {
         </motion.button>
         
         <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '16px', 
-          marginBottom: '24px' 
+          display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' 
         }}>
           <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
           <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>OR</span>
@@ -135,7 +151,7 @@ export default function Signup() {
         <form onSubmit={handleEmailSignup}>
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -158,6 +174,7 @@ export default function Signup() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={6}
             style={{
               width: '100%',
               padding: '16px',
@@ -173,23 +190,24 @@ export default function Signup() {
           />
           <motion.button
             type="submit"
-            whileHover={{ scale: 1.02, boxShadow: '0 8px 32px rgba(240,147,251,0.4)' }}
+            disabled={loading}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             style={{
               width: '100%',
-              background: 'linear-gradient(135deg, #f093fb, #f5576c)',
+              background: loading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #f093fb, #f5576c)',
               border: 'none',
               color: 'white',
               padding: '16px',
               borderRadius: '16px',
               fontSize: '16px',
               fontWeight: '700',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               boxShadow: '0 4px 16px rgba(240,147,251,0.3)',
               transition: 'all 0.3s',
             }}
           >
-            Create Account
+            {loading ? 'Creating...' : 'Create Account'}
           </motion.button>
         </form>
         
@@ -200,11 +218,7 @@ export default function Signup() {
           fontSize: '14px',
         }}>
           Already have an account?{' '}
-          <a href="/login" style={{
-            color: '#f093fb',
-            fontWeight: '600',
-            textDecoration: 'none',
-          }}>
+          <a href="/login" style={{ color: '#f093fb', fontWeight: '600', textDecoration: 'none' }}>
             Login
           </a>
         </p>

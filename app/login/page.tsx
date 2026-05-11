@@ -2,43 +2,47 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { auth, googleProvider } from '@/lib/firebase';
-import { signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
+    
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message);
+      if (err.code === 'auth/user-not-found') {
+        setError('No account found. Please sign up first.');
+      } else if (err.code === 'auth/wrong-password') {
+        setError('Incorrect password.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Invalid email address.');
+      } else if (err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password.');
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setError('');
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result.user) {
-        router.push('/dashboard');
-      }
+      await signInWithPopup(auth, googleProvider);
+      router.push('/dashboard');
     } catch (err: any) {
-      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/popup-blocked') {
-        try {
-          await signInWithRedirect(auth, googleProvider);
-        } catch (e: any) {
-          setError('Login failed. Please try again.');
-        }
-      } else {
-        setError(err.message);
-      }
+      setError(err.message);
     }
   };
 
@@ -62,7 +66,7 @@ export default function Login() {
           borderRadius: '32px',
           padding: '48px',
           width: '420px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
         }}
       >
         <motion.div
@@ -83,7 +87,7 @@ export default function Login() {
             Welcome Back
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px' }}>
-            Sign in to continue to Pixeloid
+            Sign in to continue
           </p>
         </motion.div>
         
@@ -108,7 +112,7 @@ export default function Login() {
         
         <motion.button
           onClick={handleGoogleLogin}
-          whileHover={{ scale: 1.02, boxShadow: '0 8px 32px rgba(102,126,234,0.3)' }}
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           style={{
             width: '100%',
@@ -133,10 +137,7 @@ export default function Login() {
         </motion.button>
         
         <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '16px', 
-          marginBottom: '24px' 
+          display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' 
         }}>
           <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
           <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>OR</span>
@@ -146,7 +147,7 @@ export default function Login() {
         <form onSubmit={handleEmailLogin}>
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -161,7 +162,6 @@ export default function Login() {
               outline: 'none',
               marginBottom: '12px',
               boxSizing: 'border-box',
-              transition: 'all 0.3s',
             }}
           />
           <input
@@ -181,28 +181,28 @@ export default function Login() {
               outline: 'none',
               marginBottom: '20px',
               boxSizing: 'border-box',
-              transition: 'all 0.3s',
             }}
           />
           <motion.button
             type="submit"
-            whileHover={{ scale: 1.02, boxShadow: '0 8px 32px rgba(102,126,234,0.4)' }}
+            disabled={loading}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             style={{
               width: '100%',
-              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+              background: loading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #667eea, #764ba2)',
               border: 'none',
               color: 'white',
               padding: '16px',
               borderRadius: '16px',
               fontSize: '16px',
               fontWeight: '700',
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               boxShadow: '0 4px 16px rgba(102,126,234,0.3)',
               transition: 'all 0.3s',
             }}
           >
-            Sign In
+            {loading ? 'Signing in...' : 'Sign In'}
           </motion.button>
         </form>
         
@@ -213,11 +213,7 @@ export default function Login() {
           fontSize: '14px',
         }}>
           Don't have an account?{' '}
-          <a href="/signup" style={{
-            color: '#667eea',
-            fontWeight: '600',
-            textDecoration: 'none',
-          }}>
+          <a href="/signup" style={{ color: '#667eea', fontWeight: '600', textDecoration: 'none' }}>
             Sign Up
           </a>
         </p>
