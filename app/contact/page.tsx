@@ -8,28 +8,32 @@ export default function Contact() {
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     
     try {
-      const formData = new FormData();
-      formData.append('name', name);
-      formData.append('email', email);
-      formData.append('message', message);
-      
-      await fetch('https://formsubmit.co/ajax/contact.pixeloidpro@gmail.com', {
+      const res = await fetch('/api/contact', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, message }),
       });
       
-      setSent(true);
-      setName('');
-      setEmail('');
-      setMessage('');
-    } catch (error) {
-      alert('Failed to send. Please try again.');
+      const data = await res.json();
+      
+      if (data.success) {
+        setSent(true);
+        setName('');
+        setEmail('');
+        setMessage('');
+      } else {
+        setError(data.error || 'Failed to send. Please try again.');
+      }
+    } catch (err) {
+      setError('Failed to send. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -75,7 +79,6 @@ export default function Contact() {
           gap: '16px',
           marginBottom: 'clamp(30px, 4vw, 40px)',
         }}>
-          {/* Email Card */}
           <motion.a
             href="mailto:contact.pixeloidpro@gmail.com"
             initial={{ opacity: 0, y: 20 }}
@@ -103,7 +106,6 @@ export default function Contact() {
             </p>
           </motion.a>
 
-          {/* Telegram Card */}
           <motion.a
             href="https://t.me/pixeloidpro_support_bot"
             target="_blank"
@@ -171,6 +173,20 @@ export default function Contact() {
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit}>
+              {error && (
+                <div style={{
+                  background: 'rgba(245,87,108,0.2)',
+                  border: '1px solid rgba(245,87,108,0.3)',
+                  color: '#f5576c',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  fontSize: '13px',
+                  marginBottom: '16px',
+                  textAlign: 'center',
+                }}>
+                  {error}
+                </div>
+              )}
               <input
                 type="text"
                 placeholder="Your Name"

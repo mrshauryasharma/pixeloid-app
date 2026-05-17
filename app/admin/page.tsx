@@ -10,6 +10,7 @@ export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [contactMessages, setContactMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
@@ -40,6 +41,7 @@ export default function AdminPage() {
         
         setIsAdmin(true);
         fetchAllUsers();
+        fetchContactMessages();
       } catch (error) {
         router.push('/dashboard');
       }
@@ -60,20 +62,25 @@ export default function AdminPage() {
     }
   };
 
+  const fetchContactMessages = async () => {
+    try {
+      const res = await fetch('/api/admin/contact-messages');
+      const data = await res.json();
+      setContactMessages(data.messages || []);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+
   const updateUserPlan = async (userId: string, newPlan: string) => {
     const creditsMap: Record<string, number> = {
-      free: 20,
-      weekly: 100,
-      monthly: 200,
-      yearly: 999999,
+      free: 20, weekly: 100, monthly: 200, yearly: 999999,
     };
     
-    // Immediately update UI
     setUsers(prev => prev.map(u => 
       u.id === userId ? { ...u, plan: newPlan, credits: creditsMap[newPlan] } : u
     ));
     
-    // Save to backend
     await fetch('/api/admin/update-plan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -83,10 +90,7 @@ export default function AdminPage() {
 
   const deleteUser = async (userId: string) => {
     if (!confirm('⚠️ Are you sure you want to PERMANENTLY delete this user?')) return;
-    
-    // Remove from UI immediately
     setUsers(prev => prev.filter(u => u.id !== userId));
-    
     await fetch('/api/admin/delete-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -157,9 +161,8 @@ export default function AdminPage() {
           {[
             { label: 'Total Users', value: users.length, color: '#667eea', icon: '👥' },
             { label: 'Free', value: users.filter(u => u.plan === 'free').length, color: '#4facfe', icon: '🆓' },
-            { label: 'Weekly', value: users.filter(u => u.plan === 'weekly').length, color: '#667eea', icon: '⚡' },
-            { label: 'Monthly', value: users.filter(u => u.plan === 'monthly').length, color: '#f093fb', icon: '💎' },
-            { label: 'Yearly', value: users.filter(u => u.plan === 'yearly').length, color: '#f5576c', icon: '👑' },
+            { label: 'Messages', value: contactMessages.length, color: '#f093fb', icon: '📬' },
+            { label: 'Unread', value: contactMessages.filter((m: any) => !m.read).length, color: '#f5576c', icon: '🔴' },
           ].map((stat, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '14px', padding: '16px', textAlign: 'center' }}>
@@ -171,8 +174,8 @@ export default function AdminPage() {
         </div>
 
         {/* Users Table */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '18px', overflow: 'hidden' }}>
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '18px', overflow: 'hidden', marginBottom: '24px' }}>
           
           <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ color: 'white', fontSize: '16px', fontWeight: '700', margin: 0 }}>👥 All Users ({users.length})</h2>
@@ -246,6 +249,91 @@ export default function AdminPage() {
                           color: '#f5576c', padding: '4px 8px', borderRadius: '6px', fontSize: '10px',
                           cursor: 'pointer', fontWeight: '600',
                         }}>🗑️</button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+
+        {/* Contact Messages Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          style={{
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '18px',
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{
+            padding: '14px 18px',
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <h2 style={{ color: 'white', fontSize: '16px', fontWeight: '700', margin: 0 }}>
+              📬 Contact Messages ({contactMessages.length})
+            </h2>
+            <button onClick={fetchContactMessages} style={{
+              background: 'rgba(102,126,234,0.15)',
+              border: '1px solid rgba(102,126,234,0.25)',
+              color: '#667eea',
+              padding: '5px 10px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}>🔄 Refresh</button>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.02)' }}>
+                  {['#', 'Name', 'Email', 'Message', 'Date', 'Status'].map(h => (
+                    <th key={h} style={{
+                      color: 'rgba(255,255,255,0.4)', fontSize: '10px', textTransform: 'uppercase',
+                      letterSpacing: '1px', padding: '10px 12px', textAlign: 'left', fontWeight: '600', whiteSpace: 'nowrap',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {contactMessages.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
+                      📭 No messages yet
+                    </td>
+                  </tr>
+                ) : (
+                  contactMessages.map((msg: any, i: number) => (
+                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                      <td style={{ color: 'rgba(255,255,255,0.4)', padding: '8px 12px', fontSize: '11px' }}>{i + 1}</td>
+                      <td style={{ color: 'white', padding: '8px 12px', fontSize: '12px', fontWeight: '500' }}>{msg.name}</td>
+                      <td style={{ color: '#667eea', padding: '8px 12px', fontSize: '11px' }}>{msg.email}</td>
+                      <td style={{ 
+                        color: 'rgba(255,255,255,0.7)', padding: '8px 12px', fontSize: '11px',
+                        maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {msg.message}
+                      </td>
+                      <td style={{ color: 'rgba(255,255,255,0.5)', padding: '8px 12px', fontSize: '10px' }}>
+                        {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td style={{ padding: '8px 12px' }}>
+                        <span style={{
+                          background: msg.read ? 'rgba(79,172,254,0.2)' : 'rgba(245,87,108,0.2)',
+                          color: msg.read ? '#4facfe' : '#f5576c',
+                          padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '600',
+                        }}>
+                          {msg.read ? '✓ Read' : '● New'}
+                        </span>
                       </td>
                     </tr>
                   ))
