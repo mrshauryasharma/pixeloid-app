@@ -42,7 +42,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="https://checkout.razorpay.com/v1/checkout.js" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         
-        {/* PWA Meta Tags */}
         <meta name="application-name" content="Pixeloid AI" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -51,25 +50,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#667eea" />
         <meta name="description" content="AI-Powered Daily Life Assistant by Shaurya Sharma. Chat, generate images, and automate tasks!" />
         <meta name="author" content="Shaurya Sharma" />
-        <meta name="keywords" content="AI, chatbot, image generator, daily assistant, Pixeloid, Shaurya Sharma" />
-        <meta name="robots" content="index, follow" />
-        <meta property="og:title" content="Pixeloid AI - Your Daily Life Assistant" />
-        <meta property="og:description" content="AI-powered assistant with chat, image generation, and smart tools. Created by Shaurya Sharma." />
-        <meta property="og:type" content="website" />
+        <meta name="keywords" content="AI, chatbot, daily assistant, Pixeloid, Shaurya Sharma" />
         
-        {/* Icons */}
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
         <link rel="manifest" href="/manifest.json" />
-        
-        {/* Microsoft Tiles */}
         <meta name="msapplication-TileColor" content="#667eea" />
         <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
         
         <title>Pixeloid AI - Your Daily Life Assistant</title>
         
-        {/* Service Worker Registration */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -227,6 +218,7 @@ function NavLinks({ user, loading, handleLogout, closeMenu, isMobile }: {
       <a href="/dashboard" style={linkStyle} onClick={closeMenu}>📊 Dashboard</a>
       <a href="/pricing" style={linkStyle} onClick={closeMenu}>💎 Pricing</a>
       <a href="/chat" style={linkStyle} onClick={closeMenu}>🤖 AI Chat</a>
+      <a href="/contact" style={linkStyle} onClick={closeMenu}>📬 Contact</a>
       
       {!loading && (
         user ? (
@@ -283,13 +275,35 @@ function Footer({ onNameClick }: { onNameClick: () => void }) {
           margin: 0,
         }}>
           Designed & Developed by{' '}
-          <span onClick={onNameClick} style={{
-            color: '#667eea', fontWeight: '700', textDecoration: 'underline',
-            cursor: 'pointer', transition: 'color 0.3s',
-          }}>
+          <span
+            onClick={onNameClick}
+            style={{
+              color: '#667eea',
+              fontWeight: '700',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              transition: 'color 0.3s',
+            }}
+          >
             Shaurya Sharma
           </span>
         </p>
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
+          <a href="mailto:contact.pixeloidpro@gmail.com" style={{
+            color: 'rgba(255,255,255,0.5)',
+            fontSize: 'clamp(11px, 1.5vw, 13px)',
+            textDecoration: 'none',
+          }}>
+            📧 contact.pixeloidpro@gmail.com
+          </a>
+          <a href="https://t.me/pixeloidpro_support_bot" target="_blank" rel="noopener noreferrer" style={{
+            color: 'rgba(255,255,255,0.5)',
+            fontSize: 'clamp(11px, 1.5vw, 13px)',
+            textDecoration: 'none',
+          }}>
+            💬 @pixeloidpro_support_bot
+          </a>
+        </div>
       </div>
     </footer>
   );
@@ -304,9 +318,15 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
       exit={{ opacity: 0 }}
       onClick={onClose}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
-        backdropFilter: 'blur(8px)', zIndex: 9999,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.8)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
       }}
     >
       <motion.div
@@ -317,49 +337,142 @@ function PortfolioModal({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'linear-gradient(145deg, #1a1040, #0f0c29)',
-          border: '1px solid rgba(102,126,234,0.4)', borderRadius: '24px',
-          padding: 'clamp(24px, 4vw, 40px)', maxWidth: '400px', width: '100%',
-          textAlign: 'center', boxShadow: '0 20px 60px rgba(102,126,234,0.3)', position: 'relative',
+          border: '1px solid rgba(102,126,234,0.4)',
+          borderRadius: '24px',
+          padding: 'clamp(24px, 4vw, 40px)',
+          maxWidth: '400px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 20px 60px rgba(102,126,234,0.3)',
+          position: 'relative',
         }}
       >
-        <button onClick={onClose} style={{
-          position: 'absolute', top: '12px', right: '16px',
-          background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white',
-          fontSize: '20px', cursor: 'pointer', width: '32px', height: '32px',
-          borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>✕</button>
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '16px',
+            background: 'rgba(255,255,255,0.1)',
+            border: 'none',
+            color: 'white',
+            fontSize: '20px',
+            cursor: 'pointer',
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          ✕
+        </button>
 
         <div style={{
-          width: '120px', height: '154px', borderRadius: '16px', overflow: 'hidden',
-          margin: '0 auto 16px', border: '3px solid rgba(102,126,234,0.5)',
+          width: '120px',
+          height: '154px',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          margin: '0 auto 16px',
+          border: '3px solid rgba(102,126,234,0.5)',
           boxShadow: '0 8px 24px rgba(102,126,234,0.3)',
         }}>
-          <img src="/shaurya.jpg" alt="Shaurya Sharma" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img
+            src="/shaurya.jpg"
+            alt="Shaurya Sharma"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
         </div>
 
-        <h2 style={{ color: 'white', fontSize: 'clamp(20px, 3vw, 26px)', fontWeight: '800', margin: '0 0 4px 0' }}>Shaurya Sharma</h2>
-        <p style={{ color: '#667eea', fontSize: '14px', fontWeight: '600', margin: '0 0 20px 0' }}>Full Stack Developer</p>
+        <h2 style={{
+          color: 'white',
+          fontSize: 'clamp(20px, 3vw, 26px)',
+          fontWeight: '800',
+          margin: '0 0 4px 0',
+        }}>
+          Shaurya Sharma
+        </h2>
+        <p style={{
+          color: '#667eea',
+          fontSize: '14px',
+          fontWeight: '600',
+          margin: '0 0 20px 0',
+        }}>
+          Full Stack Developer
+        </p>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginBottom: '24px' }}>
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px',
+          justifyContent: 'center',
+          marginBottom: '24px',
+        }}>
           {['UI / UX', 'Frontend Development', 'HTML', 'CSS', 'JavaScript', 'PHP', 'Java'].map((skill, i) => (
             <span key={i} style={{
-              background: 'rgba(102,126,234,0.15)', border: '1px solid rgba(102,126,234,0.25)',
-              color: '#667eea', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
-            }}>{skill}</span>
+              background: 'rgba(102,126,234,0.15)',
+              border: '1px solid rgba(102,126,234,0.25)',
+              color: '#667eea',
+              padding: '4px 12px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '600',
+            }}>
+              {skill}
+            </span>
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-          <a href="https://www.linkedin.com/in/shaurya-sharma200" target="_blank" rel="noopener noreferrer" style={{
-            background: 'linear-gradient(135deg, #0077B5, #00A0DC)', color: 'white',
-            padding: '10px 20px', borderRadius: '12px', textDecoration: 'none',
-            fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px',
-          }}>🔗 LinkedIn</a>
-          <a href="https://github.com/mrshauryasharma" target="_blank" rel="noopener noreferrer" style={{
-            background: 'linear-gradient(135deg, #333, #555)', color: 'white',
-            padding: '10px 20px', borderRadius: '12px', textDecoration: 'none',
-            fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px',
-          }}>💻 GitHub</a>
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          justifyContent: 'center',
+        }}>
+          <a
+            href="https://www.linkedin.com/in/shaurya-sharma200"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: 'linear-gradient(135deg, #0077B5, #00A0DC)',
+              color: 'white',
+              padding: '10px 20px',
+              borderRadius: '12px',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'transform 0.3s',
+            }}
+          >
+            🔗 LinkedIn
+          </a>
+          <a
+            href="https://github.com/mrshauryasharma"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: 'linear-gradient(135deg, #333, #555)',
+              color: 'white',
+              padding: '10px 20px',
+              borderRadius: '12px',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'transform 0.3s',
+            }}
+          >
+            💻 GitHub
+          </a>
         </div>
       </motion.div>
     </motion.div>
